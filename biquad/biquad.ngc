@@ -1,0 +1,153 @@
+%
+( *************************************************************************** )
+( * Biquad tool                                                             * )
+( * Metrical RS274/NGC program                                              * )
+( * Copyright 2008 Michael Buesch <mb@bu3sch.de>                            * )
+( * Licensed under the GNU/GPL version 3                                    * )
+( *                                                                         * )
+( * Origin is in the center of the leftmost quad [X-]. Z0 = surface.        * )
+( *************************************************************************** )
+
+#<_cutter_dia> = 6		( Cutter diameter )
+#<_speed> = 1500		( min^-1 )
+#<_feed> = 1000			( mm/min )
+
+( Workpiece origin coordinates [in absolute machine coordinates] )
+#<origin_x> = -30
+#<origin_y> = 0
+#<origin_z> = -10
+
+( Quad dimensions )
+#<_nr> = 4				( Number of quads. [For one biquad say 2] )
+#<_depth> = 5			( Cutting depth )
+#<_depth_step> = 2.5	( Step for cutting in depth)
+#<wire_dia> = 1			( Diameter of the wire used )
+#<width> = 30.5			( Square width [wire center] )
+
+( Internal parameters )
+#<width> = [#<width> - #<wire_dia>] ( Adjust to used wire )
+#<_c> = [SIN[45] * #<width>] ( Cathetus )
+#<_current_cutter_dia> = #<_cutter_dia>
+
+G17 G21 G40 G49 G80 G90 G94 ( Initial modes )
+G10 L2 P1 X#<origin_x> Y#<origin_y> Z#<origin_z>
+
+G53 G0 X0 Y0 Z0
+G54 S#<_speed> F#<_feed> M3
+
+
+( Subroutine for the outlines of one quad )
+O1 sub
+	#<z> = 0
+	G0 X-10 Y[#<_c> + 10]
+	G0 Z0.5
+	G1 Z0
+	O911 while [#<z> lt #<_depth>]
+
+		G1 X-10 Y[#<_c> + 10]
+		G91 G1 Z[-1 * #<_depth_step>]
+		G90
+		G41.1 D#<_current_cutter_dia>
+		G1 X0 Y#<_c> (Entry move)
+
+		G1 X#<_c> Y0
+		G1 X0 Y[-1 * #<_c>]
+		G1 X[-1 * #<_c>] Y0
+		G1 X0 Y#<_c>
+
+		G40 X10 Y[#<_c> + 10]
+
+		#<z> = [#<z> + #<_depth_step>]
+	O911 endwhile
+	G0 Z1
+O1 endsub
+
+
+( Sub-subroutine for the rest )
+( #1 is the X factor, #2 is the Y factor. )
+O3 sub
+	#<z> = 0
+	G0 X[[#<_c> + #<_cutter_dia>/2] * #1] Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+	G0 Z0.5
+	G1 Z0
+	O921 while [#<z> lt #<_depth>]
+		G0 X[[#<_c> + #<_cutter_dia>/2] * #1] Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G91 G1 Z[-1 * #<_depth_step>]
+		G90
+		G1 Y[[1 + 6] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G0 X[[#<_c> + #<_cutter_dia>/2 - 5] * #1]
+		G1 Y[[1 + 5] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G0 X[[#<_c> + #<_cutter_dia>/2 - 10] * #1]
+		G1 Y[[1 + 10] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G0 X[[#<_c> + #<_cutter_dia>/2 - 15] * #1]
+		G1 Y[[1 + 15] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G0 X[[#<_c> + #<_cutter_dia>/2 - 20] * #1]
+		G1 Y[[1 + 20] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		G0 X[[#<_c> + #<_cutter_dia>/2 - 25] * #1]
+		G1 Y[[1 + 23] * #2]
+		G1 Y[[#<_c> + #<_cutter_dia>/2 + 2] * #2]
+		#<z> = [#<z> + #<_depth_step>]
+	O921 endwhile
+	G0 Z1
+
+
+O3 endsub
+
+( Subroutine for the rest )
+O2 sub
+	O3 call [1] [1]		( X+, Y+ )
+	O3 call [-1] [1]	( X-, Y+ )
+	O3 call [-1] [-1]	( X-, Y- )
+	O3 call [1] [-1]	( X+, Y- )
+O2 endsub
+
+
+#<z> = 0
+G0 X[[#<_c> + #<_cutter_dia>/2 + 1] * -1 - 10] Y[#<_c> + #<_cutter_dia>/2 + 1]
+G0 Z0.5
+G1 Z0
+O901 while [#<z> lt #<_depth>]
+	G0 X[[#<_c> + #<_cutter_dia>/2 + 1] * -1 - 10] Y[#<_c> + #<_cutter_dia>/2 + 1]
+	G91 G1 Z[-1 * #<_depth_step>]
+	G90
+	G1 X[[#<_c>*2 + #<_cutter_dia> + 1] * #<_nr>]
+	G1 Y[[#<_c> + #<_cutter_dia>/2 + 1] * -1]
+	G1 X[[#<_c> + #<_cutter_dia>/2 + 1] * -1]
+	G1 Y[#<_c> + #<_cutter_dia>/2 + 1]
+	#<z> = [#<z> + #<_depth_step>]
+O901 endwhile
+G0 Z1
+
+O902 while [1 eq 1]
+	( Remove parts that don't belong to the quads )
+	O2 call
+
+	( Mill quad outlines. First with a small diameter offset. )
+	#<_current_cutter_dia> = [#<_cutter_dia> + 0.05]
+	O1 call
+	( And without offset and depth stepping )
+	#<old_step> = #<_depth_step>
+	#<_depth_step> = #<_depth>
+	#<_current_cutter_dia> = #<_cutter_dia>
+	O1 call
+	#<_depth_step> = #<old_step>
+
+	#<_nr> = [#<_nr> - 1]
+	O903 if [ #<_nr> le 0 ]
+		O902 break ( No more quad to go )
+	O903 endif
+	( Move origin to next quad )
+	G0 X0
+	G92 X[#<_c> * -2] ( Move origin FIXME! wire diameter!)
+O902 endwhile
+
+G53 G0 X0 Y0 Z0
+M30
+
+%
+vim: syntax=rs274ngc ts=4
