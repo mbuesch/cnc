@@ -17,7 +17,7 @@ CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
 LFUSE	= 0xE0
 HFUSE	= 0xD9
 
-OBJECTS = main.o util.o
+OBJECTS = main.o util.o valves.o sensor.o
 NAME	= pressure_control
 
 BIN	= $(NAME).bin
@@ -26,9 +26,13 @@ EEP	= $(NAME).eep.hex
 
 all: $(HEX)
 
-main.o: util.h
+main.o: util.h calibration.h valves.h sensor.h
 
 util.o: util.h calibration.h
+
+valves.o: valves.h
+
+sensor.o: sensor.h
 
 %.s: %.c
 	$(CC) $(CFLAGS) -S $*.c
