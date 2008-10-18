@@ -19,10 +19,65 @@
  */
 
 #include "sensor.h"
+#include "util.h"
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
+
+/*** The sensor enable signal ***/
+#define SENSOR_ENABLE_DDR	DDRC
+#define SENSOR_ENABLE_PORT	PORTC
+#define SENSOR_ENABLE_BIT	1
+
+
+static inline void sensor_enable(void)
+{
+	SENSOR_ENABLE_PORT |= (1 << SENSOR_ENABLE_BIT);
+}
+
+static inline void sensor_disable(void)
+{
+	SENSOR_ENABLE_PORT &= ~(1 << SENSOR_ENABLE_BIT);
+}
+
+ISR(ADC_vect)
+{
+	uint16_t val;
+
+	val = ADC;
+	sensor_disable();
+	//TODO process value
+	sensor_result(val);
+}
+
+static inline void adc_trigger(bool with_irq)
+{
+	/* Set the multiplexer to ADC-0, AVcc Ref. */
+	ADMUX = (1 << REFS0);
+	/* Start ADC with a prescaler of 128. That's a ADC freq
+	 * of 125kHz on a 16MHz crystal. */
+	ADCSRA = (1 << ADEN) | (1 << ADSC) |
+		 (1 << ADPS0) | (1 << ADPS1) | (1 << ADPS2) |
+		 (with_irq ? (1 << ADIE) : 0);
+}
+
+void sensor_trigger_read(void)
+{
+	/* Enable the sensor and wait a dwell time for the
+	 * sensor to stabilize. */
+	sensor_enable();
+	udelay(500);
+	/* Finally trigger the ADC conversion. */
+	adc_trigger(1);
+}
 
 void sensor_init(void)
 {
+	SENSOR_ENABLE_DDR |= (1 << SENSOR_ENABLE_BIT);
+	sensor_disable();
+	/* Discard the first ADC result. */
+	adc_trigger(0);
+	while (ADCSRA & (1 << ADSC))
+		mb();
 }

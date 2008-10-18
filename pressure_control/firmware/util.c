@@ -1,22 +1,26 @@
 /*
- *   Utility functions
+ *  Utility functions.
  *
- *   Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
+ *  Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
  *
- *   This program is free software; you can redistribute it and/or
- *   modify it under the terms of the GNU General Public License
- *   as published by the Free Software Foundation; either version 2
- *   of the License, or (at your option) any later version.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "util.h"
 #include "calibration.h"
 
+#include <util/crc16.h>
 #include <avr/io.h>
 #include <avr/sleep.h>
 
@@ -75,4 +79,17 @@ void infinite_sleep(void)
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 	while (1)
 		sleep_mode();
+}
+
+uint16_t crc16_block_update(uint16_t crc, const void *_data, uint16_t size)
+{
+	const uint8_t *data = _data;
+
+	while (size) {
+		crc = _crc16_update(crc, *data);
+		data++;
+		size--;
+	}
+
+	return crc;
 }

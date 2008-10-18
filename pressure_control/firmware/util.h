@@ -72,4 +72,7 @@ static inline void irq_restore(uint8_t sreg_flags)
 
 #define irqs_disabled()		(!(SREG & (1 << SREG_I)))
 
+
+uint16_t crc16_block_update(uint16_t crc, const void *data, uint16_t size);
+
 #endif /* UTIL_H_ */

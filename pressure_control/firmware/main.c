@@ -17,87 +17,180 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "main.h"
 #include "util.h"
 #include "calibration.h"
 #include "sensor.h"
 #include "valves.h"
+#include "remote.h"
+
+#include <stdint.h>
+#include <string.h>
+
+#include <avr/eeprom.h>
 
 
-static inline void usart_tx(uint8_t data)
+struct eeprom_data {
+	struct pressure_config cfg;
+};
+
+/* The pressure configuration data. */
+struct pressure_config cfg;
+/* The pressure state data. */
+struct pressure_state state;
+
+/* EEPROM contents */
+static struct eeprom_data EEMEM eeprom = {
+	.cfg = {
+		.desired		= 4000,	/* 4 Bar */
+		.hysteresis		= 300,	/* 0.3 Bar */
+		.autoadjust_enable	= 1,
+	},
+};
+
+
+void get_pressure_config(struct pressure_config *ret)
 {
-	while (!(UCSRA & (1 << UDRE)))
-		;
-	UDR = data;
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+	memcpy(ret, &cfg, sizeof(*ret));
+	irq_restore(sreg);
 }
 
-static void __print(const prog_char *msg)
+void get_pressure_state(struct pressure_state *ret)
 {
-	uint8_t c;
+	uint8_t sreg;
 
-	for ( ; ; msg++) {
-		c = pgm_read_byte(msg);
-		if (c == '\0')
-			break;
-		usart_tx(c);
+	sreg = irq_disable_save();
+	memcpy(ret, &state, sizeof(*ret));
+	irq_restore(sreg);
+}
+
+/* Load the configuration from the EEPROM. */
+static void eeprom_load_config(void)
+{
+	eeprom_busy_wait();
+	eeprom_read_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_busy_wait();
+}
+
+/* Store the configuration to the EEPROM. */
+static void eeprom_store_config(void)
+{
+	eeprom_busy_wait();
+	eeprom_write_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_busy_wait();
+}
+
+/* Sensor measurement completed.
+ * Called in IRQ context. */
+void sensor_result(uint16_t mbar)
+{
+	/* Defer processing of the value to the mainloop, so we can do it with
+	 * interrupts enabled. */
+	state.mbar = mbar;
+	mb();
+	state.needs_checking = 1;
+}
+
+/* 1kHz system timer. */
+ISR(TIMER1_COMPA_vect)
+{
+	if (state.sensor_trigger_cnt > 0)
+		state.sensor_trigger_cnt--;
+}
+
+void system_timer_init(void)
+{
+	TCCR1B = (1 << WGM12) | (1 << CS10) | (1 << CS11); /* prescaler 64 */
+	OCR1A = 250; /* 1kHz timer at 16MHz crystal */
+	TIMSK |= (1 << OCIE1A);
+}
+
+static void valves_force_state(uint8_t new_state)
+{
+	if (state.valves == new_state)
+		return;
+	valves_global_switch(new_state);
+	state.valves = new_state;
+}
+
+static void adjust_pressure(uint16_t abs_offset, bool raise_pressure)
+{
+	if (0) {
+		//TODO if offset<value do only a short valve-open time.
+		valves_force_state(VALVES_IDLE);
+
+	} else {
+		/* Open the valve. It's closed again next time we check
+		 * the pressure and it's OK. */
+		if (raise_pressure)
+			valves_force_state(VALVES_FLOW_IN);
+		else
+			valves_force_state(VALVES_FLOW_OUT);
 	}
 }
-#define print(msg)	__print(PSTR(msg))
 
-#define ERXFE		1 /* USART RX frame error */
-#define ERXPE		2 /* USART RX parity error */
-#define ERXOV		3 /* USART RX hardware buffer overflow */
-#define ENODATA		4 /* No data available */
-
-static inline int8_t usart_rx(uint8_t *data)
+/* Check the current pressure value against the desired value and
+ * adjust the pressure if needed. */
+static void check_pressure(void)
 {
-	uint8_t status;
+	int32_t offset;
+	uint16_t abs_offset;
+	bool is_too_big;
 
-	status = UCSRA;
-	if (!(status & (1 << RXC)))
-		return -ENODATA;
-	if (unlikely(status & ((1 << FE) | (1 << PE) | (1 << DOR)))) {
-		if (status & (1 << FE))
-			return -ERXFE;
-		if (status & (1 << PE))
-			return -ERXPE;
-		if (status & (1 << DOR))
-			return -ERXOV;
+	if (!cfg.autoadjust_enable)
+		return;
+
+	offset = (int32_t)state.mbar - (int32_t)cfg.desired;
+	abs_offset = abs(offset);
+	is_too_big = (offset >= 0);
+
+	if (abs_offset > cfg.hysteresis) {
+		/* Adjust the pressure */
+		adjust_pressure(abs_offset, !is_too_big);
+	} else {
+		/* The pressure is OK. Make sure the valves are
+		 * all idle. */
+		valves_force_state(VALVES_IDLE);
 	}
-	*data = UDR;
-
-	return 0;
-}
-
-#define BAUDRATE	9600
-
-static void usart_init(void)
-{
-	uint8_t dummy;
-
-	/* Set baud rate */
-	UBRRL = lo8((CPU_HZ / 16 / BAUDRATE) * 2);
-	UBRRH = hi8((CPU_HZ / 16 / BAUDRATE) * 2) & ~(1 << URSEL);
-	UCSRA = (1 << U2X);
-	/* 8 Data bits, 2 Stop bits, Even parity */
-	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1) | (1 << UPM1) | (1 << USBS);
-	/* Enable transceiver and RX IRQs */
-	UCSRB = (1 << RXEN) | (1 << TXEN);// | (1 << RXCIE);
-	/* Drain the RX buffer */
-	while (usart_rx(&dummy) != -ENODATA)
-		mb();
 }
 
 int main(void)
 {
 	cli();
 
+	/* It's OK to init the remote interface that early, as we
+	 * have IRQs disabled throughout the init process. So we can't
+	 * receive any remote commands, yet. But early init allows us
+	 * to send error messages early. */
+	remote_init();
+	print("Pressure control initializing...\n");
+
 	valves_init();
-	usart_init();
+	state.valves = VALVES_IDLE;
+	sensor_init();
+	eeprom_load_config();
+	system_timer_init();
 
 	sei();
 
+	print("Monitoring...\n");
 	while (1) {
-		print("Hallo!\n");
-		//TODO
+		mb();
+		if (state.sensor_trigger_cnt == 0) {
+			/* It's time for triggering another sensor measurement. */
+			state.sensor_trigger_cnt = -1;
+			mb();
+			sensor_trigger_read();
+		}
+		if (state.needs_checking) {
+			check_pressure();
+			/* Trigger another measurement in 50 milliseconds. */
+			state.sensor_trigger_cnt = 50;
+			mb();
+		}
+		remote_work();
 	}
 }

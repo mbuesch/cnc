@@ -17,7 +17,7 @@ CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
 LFUSE	= 0xE0
 HFUSE	= 0xD9
 
-OBJECTS = main.o util.o valves.o sensor.o
+OBJECTS = main.o util.o valves.o sensor.o remote.o
 NAME	= pressure_control
 
 BIN	= $(NAME).bin
@@ -26,13 +26,15 @@ EEP	= $(NAME).eep.hex
 
 all: $(HEX)
 
-main.o: util.h calibration.h valves.h sensor.h
+main.o: util.h calibration.h valves.h sensor.h remote.h main.h
 
 util.o: util.h calibration.h
 
-valves.o: valves.h
+valves.o: util.h valves.h
 
-sensor.o: sensor.h
+sensor.o: util.h sensor.h
+
+remote.o: util.h remote.h calibration.h main.h
 
 %.s: %.c
 	$(CC) $(CFLAGS) -S $*.c
@@ -42,8 +44,8 @@ $(BIN): $(OBJECTS)
 
 $(HEX): $(BIN)
 	$(OBJCOPY) -R.eeprom -O ihex $(BIN) $(HEX)
-#	$(OBJCOPY) -j.eeprom --set-section-flags=.eeprom="alloc,load" \
-#		   --change-section-lma .eeprom=0 -O ihex $(BIN) $(EEP)
+	$(OBJCOPY) -j.eeprom --set-section-flags=.eeprom="alloc,load" \
+		   --change-section-lma .eeprom=0 -O ihex $(BIN) $(EEP)
 	$(SIZE) $(BIN)
 
 avrdude:
@@ -58,7 +60,7 @@ install_eeprom:
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -U eeprom:w:$(EEP)
 
-install: all install_flash
+install: all install_flash install_eeprom
 
 # Reset the microcontroller through avrdude
 reset:
