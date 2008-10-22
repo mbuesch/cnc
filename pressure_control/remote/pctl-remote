@@ -30,8 +30,8 @@ CONFIG_PARITY			= PARITY_EVEN
 CONFIG_STOPBITS			= 2
 
 # The size of one message
-MSG_SIZE			= 38
-MSG_PAYLOAD_SIZE		= 32
+MSG_SIZE			= 12
+MSG_PAYLOAD_SIZE		= 8
 # Message IDs
 MSG_INVALID			= 0
 MSG_ERROR			= 1
@@ -142,13 +142,13 @@ class RemoteProtocol(QObject):
 		#TODO
 
 	def getPayload(self, msg):
-		return msg[4:-2]
+		return msg[2:-2]
 
 	def sendMessage(self, id, flags, payload):
 		"""Send a message"""
 		assert(len(payload) <= MSG_PAYLOAD_SIZE)
 		# Create the header
-		msg = "%c%c\0\0" % (id, flags)
+		msg = "%c%c" % (id, flags)
 		# Add the payload
 		msg += payload
 		# Pad the payload up to the constant size

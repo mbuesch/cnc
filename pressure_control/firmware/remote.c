@@ -288,7 +288,7 @@ static void usart_init(void)
 void remote_init(void)
 {
 	/* The remote tool depends on the exact size (and layout). */
-	BUILD_BUG_ON(sizeof(struct remote_message) != 38);
+	BUILD_BUG_ON(sizeof(struct remote_message) != 12);
 
 	usart_init();
 }

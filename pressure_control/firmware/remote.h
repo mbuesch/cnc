@@ -43,14 +43,13 @@ enum remote_message_config_flags {
 struct remote_message {
 	uint8_t id;
 	uint8_t flags;
-	uint8_t __padding0[2];
 
 	union {
 		struct {
 			uint8_t code;
 		} __attribute__((packed)) error;
 		struct {
-			char str[32];
+			char str[8];
 		} __attribute__((packed)) logmessage;
 		struct {
 			uint16_t mbar;
@@ -63,7 +62,7 @@ struct remote_message {
 			uint8_t state;
 		} __attribute__((packed)) valve;
 
-		uint8_t __padding1[32];
+		uint8_t __padding[8];
 	} __attribute__((packed));
 
 	uint16_t crc;
