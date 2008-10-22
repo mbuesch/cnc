@@ -23,11 +23,17 @@ enum remote_message_id {
 	MSG_GET_CONFIG_FLAGS,
 	MSG_CONFIG_FLAGS,
 	MSG_SET_CONFIG_FLAGS,
+	MSG_SET_VALVE,
 };
 
 enum remote_message_error {
-	MSG_ERR_NONE = 0,
-	MSG_ERR_CHKSUM,
+	MSG_ERR_NONE = 0,	/* No error */
+	MSG_ERR_CHKSUM,		/* Checksum error */
+	MSG_ERR_NOCMD,		/* Unknown command */
+};
+
+enum remote_message_flags {
+	MSG_FLAG_REQ_ERRCODE = 0,
 };
 
 enum remote_message_config_flags {
@@ -36,7 +42,8 @@ enum remote_message_config_flags {
 
 struct remote_message {
 	uint8_t id;
-	uint8_t __padding0[3];
+	uint8_t flags;
+	uint8_t __padding0[2];
 
 	union {
 		struct {
@@ -51,6 +58,10 @@ struct remote_message {
 		struct {
 			uint32_t flags;
 		} __attribute__((packed)) config;
+		struct {
+			uint8_t nr; /* Valve ID */
+			uint8_t state;
+		} __attribute__((packed)) valve;
 
 		uint8_t __padding1[32];
 	} __attribute__((packed));
@@ -61,6 +72,9 @@ struct remote_message {
 
 void print_pgm(const prog_char *msg);
 #define print(string_literal)	print_pgm(PSTR(string_literal))
+
+void remote_pressure_change_notification(uint16_t mbar,
+					 uint16_t hysteresis);
 
 void remote_work(void);
 void remote_init(void);

@@ -89,30 +89,21 @@ static void send_message(struct remote_message *msg)
 	usart_tx_buf(msg, sizeof(*msg));
 }
 
-static void send_message_error(uint8_t error_code)
-{
-	struct remote_message msg;
-
-	memset(&msg, 0, sizeof(msg));
-	msg.id = MSG_ERROR;
-	msg.error.code = error_code;
-
-	send_message(&msg);
-}
-
 static void handle_received_message(void)
 {
 	struct remote_message reply;
 	uint16_t calc_crc;
+	uint8_t err = MSG_ERR_NONE;
 
 	calc_crc = crc16_block_update(0xFFFF, &rx_msg,
 				      sizeof(rx_msg) - sizeof(rx_msg.crc));
 	calc_crc ^= 0xFFFF;
 	if (calc_crc != rx_msg.crc) {
 		/* CRC mismatch. */
-		send_message_error(MSG_ERR_CHKSUM);
-		return;
+		err = MSG_ERR_CHKSUM;
+		goto out;
 	}
+
 	memset(&reply, 0, sizeof(reply));
 
 	switch (rx_msg.id) {
@@ -156,7 +147,49 @@ static void handle_received_message(void)
 			reply.config.flags |= (1 << CFG_FLAG_AUTOADJUST_ENABLE);
 		send_message(&reply);
 		break;
-	} }
+	}
+	case MSG_SET_DESIRED_PRESSURE: {
+		struct pressure_config conf;
+
+		cli();
+		get_pressure_config(&conf);
+		conf.desired = rx_msg.pressure.mbar;
+		set_pressure_config(&conf);
+		sei();
+		break;
+	}
+	case MSG_SET_HYSTERESIS: {
+		struct pressure_config conf;
+
+		cli();
+		get_pressure_config(&conf);
+		conf.hysteresis = rx_msg.pressure.mbar;
+		set_pressure_config(&conf);
+		sei();
+		break;
+	}
+	case MSG_SET_CONFIG_FLAGS: {
+		struct pressure_config conf;
+
+		cli();
+		get_pressure_config(&conf);
+		conf.autoadjust_enable = !!(rx_msg.config.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
+		set_pressure_config(&conf);
+		sei();
+		break;
+	}
+	default:
+		err = MSG_ERR_NOCMD;
+		break;
+	}
+
+out:
+	if (rx_msg.flags & (1 << MSG_FLAG_REQ_ERRCODE)) {
+		memset(&reply, 0, sizeof(reply));
+		reply.id = MSG_ERROR;
+		reply.error.code = err;
+		send_message(&reply);
+	}
 }
 
 /* RX interrupt */
@@ -182,6 +215,7 @@ ISR(USART_RXC_vect)
 			rx_msg_count = 0;
 			mb();
 			rx_msg_valid = 1;
+			break;
 		}
 	}
 }
@@ -215,6 +249,23 @@ void remote_work(void)
 		mb();
 		rx_msg_valid = 0;
 	}
+}
+
+void remote_pressure_change_notification(uint16_t mbar,
+					 uint16_t hysteresis)
+{
+	struct remote_message msg;
+
+	static uint16_t prev_value;
+
+	if (abs((int32_t)mbar - (int32_t)prev_value) <= hysteresis)
+		return;
+	prev_value = mbar;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.id = MSG_CURRENT_PRESSURE;
+	msg.pressure.mbar = mbar;
+	send_message(&msg);
 }
 
 static void usart_init(void)

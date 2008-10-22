@@ -31,6 +31,7 @@ struct pressure_state {
 };
 
 void get_pressure_config(struct pressure_config *cfg);
+void set_pressure_config(struct pressure_config *cfg);
 void get_pressure_state(struct pressure_state *state);
 
 #endif /* MAIN_H_ */

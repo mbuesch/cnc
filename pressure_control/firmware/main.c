@@ -58,6 +58,15 @@ void get_pressure_config(struct pressure_config *ret)
 	irq_restore(sreg);
 }
 
+void set_pressure_config(struct pressure_config *new_cfg)
+{
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+	memcpy(&cfg, new_cfg, sizeof(cfg));
+	irq_restore(sreg);
+}
+
 void get_pressure_state(struct pressure_state *ret)
 {
 	uint8_t sreg;
@@ -140,21 +149,21 @@ static void check_pressure(void)
 	uint16_t abs_offset;
 	bool is_too_big;
 
-	if (!cfg.autoadjust_enable)
-		return;
+	if (cfg.autoadjust_enable) {
+		offset = (int32_t)state.mbar - (int32_t)cfg.desired;
+		abs_offset = abs(offset);
+		is_too_big = (offset >= 0);
 
-	offset = (int32_t)state.mbar - (int32_t)cfg.desired;
-	abs_offset = abs(offset);
-	is_too_big = (offset >= 0);
-
-	if (abs_offset > cfg.hysteresis) {
-		/* Adjust the pressure */
-		adjust_pressure(abs_offset, !is_too_big);
-	} else {
-		/* The pressure is OK. Make sure the valves are
-		 * all idle. */
-		valves_force_state(VALVES_IDLE);
+		if (abs_offset > cfg.hysteresis) {
+			/* Adjust the pressure */
+			adjust_pressure(abs_offset, !is_too_big);
+		} else {
+			/* The pressure is OK. Make sure the valves are
+			 * all idle. */
+			valves_force_state(VALVES_IDLE);
+		}
 	}
+//FIXME	remote_pressure_change_notification(state.mbar, cfg.hysteresis);
 }
 
 int main(void)
