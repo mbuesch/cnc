@@ -108,6 +108,7 @@ ISR(TIMER1_COMPA_vect)
 {
 	if (state.sensor_trigger_cnt > 0)
 		state.sensor_trigger_cnt--;
+	remote_1khz_work();
 }
 
 void system_timer_init(void)

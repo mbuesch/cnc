@@ -104,6 +104,7 @@ class RemoteProtocol(QObject):
 		self.serial = Serial(ttyfile, CONFIG_BAUDRATE,
 				     CONFIG_BYTESIZE, CONFIG_PARITY,
 				     CONFIG_STOPBITS)
+		self.serial.flushInput()
 
 		self.pollTimer = QTimer(self)
 		self.connect(self.pollTimer, SIGNAL("timeout()"), self.poll)

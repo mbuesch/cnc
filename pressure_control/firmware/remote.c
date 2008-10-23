@@ -36,6 +36,7 @@ static struct remote_message rx_msg;
 static uint8_t rx_msg_count;
 static bool rx_msg_valid;
 static bool rx_softirq;
+static uint16_t rx_timeout;
 
 
 static inline void usart_tx(uint8_t data)
@@ -236,6 +237,7 @@ static void usart_handle_rx_irq(void)
 		rxbuf[rx_msg_count++] = data;
 		if (rx_msg_count == sizeof(struct remote_message)) {
 			rx_msg_count = 0;
+			rx_timeout = 0;
 			mb();
 			rx_msg_valid = 1;
 			break;
@@ -252,6 +254,19 @@ ISR(USART_RXC_vect)
 		return;
 	}
 	usart_handle_rx_irq();
+}
+
+/* Called with IRQs disabled. */
+static void usart_rx_timeout_check()
+{
+	if (rx_msg_count > 0)
+		rx_timeout++;
+	if (rx_timeout > 100 /* milliseconds */) {
+		/* Timeout! Reset the RX buffer. */
+		rx_msg_count = 0;
+		rx_timeout = 0;
+	}
+	mb();
 }
 
 void print_pgm(const prog_char *str)
@@ -289,6 +304,12 @@ void remote_work(void)
 		usart_handle_rx_irq();
 	}
 	sei();
+}
+
+/* Maintanance work. Called at a frequency of 1KHz with IRQs disabled. */
+void remote_1khz_work(void)
+{
+	usart_rx_timeout_check();
 }
 
 void remote_pressure_change_notification(uint16_t mbar,
