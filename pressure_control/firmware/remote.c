@@ -35,6 +35,7 @@
 static struct remote_message rx_msg;
 static uint8_t rx_msg_count;
 static bool rx_msg_valid;
+static bool rx_softirq;
 
 
 static inline void usart_tx(uint8_t data)
@@ -63,21 +64,22 @@ static void usart_tx_buf(const void *_buf, uint8_t size)
 static inline int8_t usart_rx(uint8_t *data)
 {
 	uint8_t status;
+	int8_t err = 0;
 
 	status = UCSRA;
 	if (!(status & (1 << RXC)))
 		return -ENODATA;
 	if (unlikely(status & ((1 << FE) | (1 << PE) | (1 << DOR)))) {
 		if (status & (1 << FE))
-			return -ERXFE;
+			err = -ERXFE;
 		if (status & (1 << PE))
-			return -ERXPE;
+			err = -ERXPE;
 		if (status & (1 << DOR))
-			return -ERXOV;
+			err = -ERXOV;
 	}
 	*data = UDR;
 
-	return 0;
+	return err;
 }
 
 static void send_message(struct remote_message *msg)
@@ -219,24 +221,18 @@ out:
 	}
 }
 
-/* RX interrupt */
-ISR(USART_RXC_vect)
+static void usart_handle_rx_irq(void)
 {
 	uint8_t *rxbuf = (uint8_t *)&rx_msg;
 	int8_t err;
 	uint8_t data;
 
-	if (rx_msg_valid)
-		return;
-
 	while (1) {
 		err = usart_rx(&data);
 		if (err == -ENODATA)
 			break;
-		if (unlikely(err)) {
-			//TODO other error
-			data = 0;
-		}
+		/* Ignore other errors. The CRC check will detect them later. */
+
 		rxbuf[rx_msg_count++] = data;
 		if (rx_msg_count == sizeof(struct remote_message)) {
 			rx_msg_count = 0;
@@ -245,6 +241,17 @@ ISR(USART_RXC_vect)
 			break;
 		}
 	}
+}
+
+/* RX interrupt */
+ISR(USART_RXC_vect)
+{
+	if (rx_msg_valid) {
+		/* We're busy. Schedule a software IRQ for later. */
+		rx_softirq = 1;
+		return;
+	}
+	usart_handle_rx_irq();
 }
 
 void print_pgm(const prog_char *str)
@@ -276,6 +283,12 @@ void remote_work(void)
 		mb();
 		rx_msg_valid = 0;
 	}
+	cli();
+	if (rx_softirq) {
+		rx_softirq = 0;
+		usart_handle_rx_irq();
+	}
+	sei();
 }
 
 void remote_pressure_change_notification(uint16_t mbar,
