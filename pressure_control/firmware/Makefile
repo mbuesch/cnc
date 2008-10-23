@@ -34,7 +34,7 @@ valves.o: util.h valves.h
 
 sensor.o: util.h sensor.h
 
-remote.o: util.h remote.h calibration.h main.h
+remote.o: util.h remote.h calibration.h main.h valves.h
 
 %.s: %.c
 	$(CC) $(CFLAGS) -S $*.c

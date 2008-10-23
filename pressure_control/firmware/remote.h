@@ -30,6 +30,8 @@ enum remote_message_error {
 	MSG_ERR_NONE = 0,	/* No error */
 	MSG_ERR_CHKSUM,		/* Checksum error */
 	MSG_ERR_NOCMD,		/* Unknown command */
+	MSG_ERR_BUSY,		/* Busy */
+	MSG_ERR_INVAL,		/* Invalid argument */
 };
 
 enum remote_message_flags {

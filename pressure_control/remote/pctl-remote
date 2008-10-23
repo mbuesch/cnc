@@ -54,6 +54,8 @@ MSG_SET_VALVE			= 16
 MSG_ERR_NONE			= 0 # No error
 MSG_ERR_CHKSUM			= 1 # Checksum error
 MSG_ERR_NOCMD			= 2 # Unknown command
+MSG_ERR_BUSY			= 3 # Busy
+MSG_ERR_INVAL			= 4 # Invalid argument
 MSG_ERR_NOREPLY			= -1 # internal. Not sent over wire.
 # Message flags
 MSG_FLAG_REQ_ERRCODE		= 0

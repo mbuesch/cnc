@@ -31,14 +31,8 @@
 #define VALVE1_14		6 /* Pin for valve-1 position 14 */
 #define VALVE1_12		7 /* Pin for valve-1 position 12 */
 
-/* State for one valve. */
-enum valve_state {
-	VALVE_STATE_12,
-	VALVE_STATE_14,
-};
 
-
-static void valve0_switch(uint8_t state)
+void valve0_switch(uint8_t state)
 {
 	VALVE_PORT &= ~((1 << VALVE0_12) | (1 << VALVE0_14));
 	if (state == VALVE_STATE_12)
@@ -47,7 +41,7 @@ static void valve0_switch(uint8_t state)
 		VALVE_PORT |= (1 << VALVE0_14);
 }
 
-static void valve1_switch(uint8_t state)
+void valve1_switch(uint8_t state)
 {
 	VALVE_PORT &= ~((1 << VALVE1_12) | (1 << VALVE1_14));
 	if (state == VALVE_STATE_12)

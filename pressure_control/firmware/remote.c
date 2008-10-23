@@ -22,6 +22,7 @@
 #include "util.h"
 #include "calibration.h"
 #include "main.h"
+#include "valves.h"
 
 #include <string.h>
 
@@ -170,14 +171,40 @@ static void handle_received_message(void)
 	}
 	case MSG_SET_CONFIG_FLAGS: {
 		struct pressure_config conf;
+		bool flag;
 
 		cli();
 		get_pressure_config(&conf);
-		conf.autoadjust_enable = !!(rx_msg.config.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
+		flag = !!(rx_msg.config.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
+		if (conf.autoadjust_enable != flag) {
+			conf.autoadjust_enable = flag;
+			/* Make sure the values are idle. */
+			valves_global_switch(VALVES_IDLE);
+		}
 		set_pressure_config(&conf);
 		sei();
 		break;
 	}
+	case MSG_SET_VALVE: {
+		struct pressure_config conf;
+
+		get_pressure_config(&conf);
+		if (conf.autoadjust_enable) {
+			err = MSG_ERR_BUSY;
+			break;
+		}
+		if (rx_msg.valve.nr == 0) {
+			valve0_switch(rx_msg.valve.state == 0 ?
+				      VALVE_STATE_12 : VALVE_STATE_14);
+		} else if (rx_msg.valve.nr == 1) {
+			valve1_switch(rx_msg.valve.state == 0 ?
+				      VALVE_STATE_12 : VALVE_STATE_14);
+		} else
+			err = MSG_ERR_INVAL;
+		break;
+	}
+	case MSG_INVALID:
+		break;
 	default:
 		err = MSG_ERR_NOCMD;
 		break;
