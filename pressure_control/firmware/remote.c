@@ -29,7 +29,7 @@
 #include <avr/io.h>
 
 
-#define BAUDRATE	9600
+#define BAUDRATE	115200
 
 
 static struct remote_message rx_msg;
@@ -303,8 +303,8 @@ static void usart_init(void)
 	UBRRL = lo8((CPU_HZ / 16 / BAUDRATE) * 2);
 	UBRRH = hi8((CPU_HZ / 16 / BAUDRATE) * 2) & ~(1 << URSEL);
 	UCSRA = (1 << U2X);
-	/* 8 Data bits, 2 Stop bits, Even parity */
-	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1) | (1 << UPM1) | (1 << USBS);
+	/* 8 Data bits, 1 Stop bit, No parity */
+	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1);
 	/* Enable transceiver and RX IRQs */
 	UCSRB = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
 	/* Drain the RX buffer */

@@ -24,10 +24,10 @@ from PyQt4.QtGui import *
 
 
 # Serial communication port configuration
-CONFIG_BAUDRATE			= 9600
+CONFIG_BAUDRATE			= 115200
 CONFIG_BYTESIZE			= 8
-CONFIG_PARITY			= PARITY_EVEN
-CONFIG_STOPBITS			= 2
+CONFIG_PARITY			= PARITY_NONE
+CONFIG_STOPBITS			= 1
 
 # The size of one message
 MSG_SIZE			= 12
