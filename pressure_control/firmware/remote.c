@@ -29,7 +29,8 @@
 #include <avr/io.h>
 
 
-#define BAUDRATE	115200
+#define BAUDRATE	38400 /* Error = 0.2% */
+#define USE_2X		0
 
 
 static struct remote_message rx_msg;
@@ -329,14 +330,22 @@ void remote_pressure_change_notification(uint16_t mbar,
 	send_message(&msg);
 }
 
+#if USE_2X
+# define UBRR_FACTOR	2
+#else
+# define UBRR_FACTOR	1
+#endif
+
 static void usart_init(void)
 {
 	uint8_t dummy;
 
 	/* Set baud rate */
-	UBRRL = lo8((CPU_HZ / 16 / BAUDRATE) * 2);
-	UBRRH = hi8((CPU_HZ / 16 / BAUDRATE) * 2) & ~(1 << URSEL);
+	UBRRL = lo8((CPU_HZ / 16 / BAUDRATE) * UBRR_FACTOR);
+	UBRRH = hi8((CPU_HZ / 16 / BAUDRATE) * UBRR_FACTOR) & ~(1 << URSEL);
+#if USE_2X
 	UCSRA = (1 << U2X);
+#endif
 	/* 8 Data bits, 1 Stop bit, No parity */
 	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1);
 	/* Enable transceiver and RX IRQs */
