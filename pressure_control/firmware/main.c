@@ -164,7 +164,7 @@ static void check_pressure(void)
 			valves_force_state(VALVES_IDLE);
 		}
 	}
-//FIXME	remote_pressure_change_notification(state.mbar, cfg.hysteresis);
+	remote_pressure_change_notification(state.mbar, cfg.hysteresis);
 }
 
 int main(void)
@@ -199,6 +199,7 @@ int main(void)
 			check_pressure();
 			/* Trigger another measurement in 50 milliseconds. */
 			state.sensor_trigger_cnt = 50;
+			state.needs_checking = 0;
 			mb();
 		}
 		remote_work();
