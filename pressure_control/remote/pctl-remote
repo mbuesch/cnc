@@ -279,7 +279,7 @@ class MainWidget(QWidget):
 		h.addWidget(label)
 		self.curPressure = QLCDNumber(self)
 		self.curPressure.setSegmentStyle(QLCDNumber.Flat)
-		self.curPressure.display(5.1)
+		self.curPressure.display(0.0)
 		h.addWidget(self.curPressure)
 		label = QLabel(self.tr("Bar"), self)
 		h.addWidget(label)
