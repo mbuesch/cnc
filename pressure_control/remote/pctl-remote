@@ -72,20 +72,26 @@ def usage():
 	print "Usage: pctl-remote [OPTIONS] /dev/ttyS0"
 	print ""
 	print "-h|--help            Print this help text"
+	print "-p|--noping          Don't initially ping the device"
+	print "-f|--nofetch         Don't initially fetch the device state"
 
 def parseArgs():
 	global opt_ttyfile
+	global opt_noping
+	global opt_nofetch
 
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit(1)
 
 	opt_ttyfile = sys.argv[-1]
+	opt_noping = 0
+	opt_nofetch = 0
 
 	try:
 		(opts, args) = getopt.getopt(sys.argv[1:-1],
-			"h",
-			[ "help" ])
+			"hpf",
+			[ "help", "noping", "nofetch" ])
 	except getopt.GetoptError:
 		usage()
 		sys.exit(1)
@@ -94,6 +100,10 @@ def parseArgs():
 		if o in ("-h", "--help"):
 			usage()
 			sys.exit(0)
+		if o in ("-p", "--noping"):
+			opt_noping = 1
+		if o in ("-f", "--nofetch"):
+			opt_nofetch = 1
 
 class RemoteProtocol(QObject):
 	def __init__(self, ttyfile):
@@ -110,11 +120,12 @@ class RemoteProtocol(QObject):
 		self.connect(self.pollTimer, SIGNAL("timeout()"), self.poll)
 		self.pollTimer.start(50)
 
-		reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
-		if not reply:
-			print "Communication with device failed. No reply to PING request."
-			sys.exit(1)
-		mainwnd.centralWidget().log.addText("PING->PONG success. Device is alife.\n")
+		if not opt_noping:
+			reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
+			if not reply:
+				print "Communication with device failed. No reply to PING request."
+				sys.exit(1)
+			mainwnd.centralWidget().log.addText("PING->PONG success. Device is alife.\n")
 
 	def poll(self):
 		if self.serial.inWaiting() < MSG_SIZE:
@@ -329,6 +340,11 @@ class MainWidget(QWidget):
 		self.setLayout(layout)
 
 	def initializeState(self):
+		if not opt_nofetch:
+			self.__fetchState()
+		self.initialized = True
+
+	def __fetchState(self):
 		# Get the current pressure
 		reply = remote.sendMessageSyncReply(MSG_GET_CURRENT_PRESSURE, 0, "",
 						    MSG_CURRENT_PRESSURE)
@@ -364,8 +380,6 @@ class MainWidget(QWidget):
 			sys.exit(1)
 		if flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
 			self.autoCheckbox.setCheckState(Qt.Checked)
-
-		self.initialized = True
 
 	def parseCurrentPressureMsg(self, msg):
 		msg = remote.getPayload(msg)
