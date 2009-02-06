@@ -1,0 +1,52 @@
+%
+( *************************************************************************** )
+( * Cut a hole for a D-SUB connector                                        * )
+( * Metrical RS274/NGC program                                              * )
+( * Copyright 2009 Michael Buesch <mb@bu3sch.de>                            * )
+( * Licensed under the GNU/GPL version 3                                    * )
+( *************************************************************************** )
+
+#<_cutter_dia> = 6		( Cutter diameter )
+#<_speed> = 50			( min^-1 )
+#<_feed> = 1000			( mm/min )
+
+#<_depth> = 5			( Cutting depth )
+#<_depth_step> = 0.5	( Step for cutting in depth)
+
+( 25 pin D-SUB )
+#<_width_top> = 41
+#<_width_bot> = 37
+#<_height> = 11.5
+
+G17 G40 G49 G80 G90 G94 G61 (G21) ( Initial modes )
+
+G53 G0 X0 Y0 Z0
+G54 S#<_speed> F#<_feed> M3
+
+#<_h> = [[#<_height> / 2] - [#<_cutter_dia> / 2]]
+#<_wtop> = [[#<_width_top> / 2] - [#<_cutter_dia> / 2]]
+#<_wbot> = [[#<_width_bot> / 2] - [#<_cutter_dia> / 2]]
+
+#<z> = 0
+G0 X0 Y#<_h> Z1
+G1 Z0
+O901 while [#<z> lt #<_depth>]
+	G91 G1 Z[-1 * #<_depth_step>]
+	G90
+
+	G1 X#<_wtop>
+	G1 X#<_wbot> Y[-1 * #<_h>]
+	G1 X[-1 * #<_wbot>]
+	G1 X[-1 * #<_wtop>] Y#<_h>
+	G1 X0
+
+	#<z> = [#<z> + #<_depth_step>]
+O901 endwhile
+G1 X1
+G0 Z30
+G53 G0 X0 Y0
+
+M30
+
+%
+vim: syntax=rs274ngc ts=4
