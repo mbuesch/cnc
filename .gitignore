@@ -1,5 +1,6 @@
-.gitignore
 *.o
 *.swp
 *.bin
 *.hex
+*.bak
+*.cache.*
