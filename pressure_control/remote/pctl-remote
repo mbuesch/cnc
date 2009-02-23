@@ -253,7 +253,7 @@ class StatusBar(QStatusBar):
 
 class LogBrowser(QTextEdit):
 	def __init__(self, parent=None):
-		QTextBrowser.__init__(self, parent)
+		QTextEdit.__init__(self, parent)
 
 		self.needTimeStamp = True
 		self.setReadOnly(1)
