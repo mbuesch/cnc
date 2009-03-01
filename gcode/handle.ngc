@@ -1,0 +1,61 @@
+%
+( *************************************************************************** )
+( * Replacement handle for a "third hand" helper tool.                      * )
+( * Metrical RS274/NGC program                                              * )
+( * G54 X0/Y0 is at the hinge hole                                          * )
+( * G54 Z0 is at the surface                                                * )
+( *                                                                         * )
+( * Copyright 2009 Michael Buesch <mb@bu3sch.de>                            * )
+( * Licensed under the GNU/GPL version 3                                    * )
+( *************************************************************************** )
+
+
+#1	=	6		( cutter diameter )
+
+#10	=	2000	( min^-1 )
+#11	=	100		( feed in mm/min )
+#12	=	20		( Z-feed in mm/min )
+
+#20	=	3.5		( cutting depth in Z )
+#21	=	1		( cutting depth stepping )
+
+
+G17 G40 G49 G80 G90 G94 G61 G21 ( Initial modes )
+G0 G54 X0 Y0 S#10
+G0 Z20
+
+#100 = 0
+G0 X[9 - #1/2] Y[27.5 + #1/2]
+G0 Z1
+O901 while [#100 lt #20]
+	#100 = [#100 + #21]
+	O902 if [#100 gt #20] ( if [Z > depth]: Z = depth )
+		#100 = #20
+	O902 endif
+
+	G1 Z[#100 * -1] F#12
+	F#11
+
+	G41.1 D#1
+	G1 X10 Y27.5 ( entry move )
+	G1 X130
+	G1 Y26
+	G2 X99.049 Y9.5 I-30.952 J20.780
+	G1 X13
+	G3 X9.290 Y6.996 I0 J-4
+	G1 X5.565 Y-2.244
+	G2 X-5.826 Y1.436 I-5.565 J2.244 ( tip )
+	G1 X-1.651 Y18.372
+	G2 X10 Y27.5 I11.651 J-2.872
+	G40 G1 X10 Y[27.5 + #1/2]
+
+	G0 Z1
+	G0 X[9 - #1/2] Y[27.5 + #1/2]
+
+O901 endwhile
+G0 Z30
+
+M30
+
+%
+vim: syntax=rs274ngc ts=4
