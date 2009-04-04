@@ -93,3 +93,37 @@ uint16_t crc16_block_update(uint16_t crc, const void *_data, uint16_t size)
 
 	return crc;
 }
+
+uint8_t hexdigit_to_ascii(uint8_t digit)
+{
+	/* Convert a hexadecimal digit (0-F) to an ASCII character */
+	if (digit >= 0xA)
+		digit += 0x41 - 0xA;
+	else
+		digit += 0x30;
+	return digit;
+}
+
+void num16_to_ascii(uint8_t *buf, uint16_t v)
+{
+	uint16_t orig = v;
+
+	if (orig >= 10000) {
+		*buf++ = v / 10000 + '0';
+		v %= 10000;
+	}
+	if (orig >= 1000) {
+		*buf++ = v / 1000 + '0';
+		v %= 1000;
+	}
+	if (orig >= 100) {
+		*buf++ = v / 100 + '0';
+		v %= 100;
+	}
+	if (orig >= 10) {
+		*buf++ = v / 10 + '0';
+		v %= 10;
+	}
+	*buf++ = v + '0';
+	*buf = '\0';
+}

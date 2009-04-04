@@ -270,6 +270,27 @@ static void usart_rx_timeout_check()
 	mb();
 }
 
+void print_sram(const char *str)
+{
+	struct remote_message msg;
+	uint8_t c, i;
+
+	do {
+		memset(&msg, 0, sizeof(msg));
+		msg.id = MSG_LOGMESSAGE;
+
+		for (i = 0; i < sizeof(msg.logmessage.str); i++) {
+			c = *str;
+			if (c == '\0')
+				break;
+			str++;
+			msg.logmessage.str[i] = c;
+		}
+
+		send_message(&msg);
+	} while (c != '\0');
+}
+
 void print_pgm(const prog_char *str)
 {
 	struct remote_message msg;
@@ -289,6 +310,42 @@ void print_pgm(const prog_char *str)
 
 		send_message(&msg);
 	} while (c != '\0');
+}
+
+static void __print_dec(char prefix, uint16_t number)
+{
+	uint8_t num[NUM16_NR_DIGITS + sizeof(prefix) + 1];
+
+	num[0] = prefix;
+	num16_to_ascii(num + 1, number);
+	if (prefix)
+		print_sram((char *)num);
+	else
+		print_sram((char *)(num + 1));
+}
+
+void print_dec(uint16_t number)
+{
+	__print_dec(0, number);
+}
+
+void print_dec_signed(int16_t number)
+{
+	if (number < 0)
+		__print_dec('-', -number);
+	else
+		__print_dec(0, number);
+}
+
+void print_hex(uint8_t number)
+{
+	char hex[3];
+
+	hex[0] = hexdigit_to_ascii(number >> 4);
+	hex[1] = hexdigit_to_ascii(number & 0xF);
+	hex[2] = '\0';
+
+	print_sram(hex);
 }
 
 /* Maintanance work. Called with IRQs enabled. */

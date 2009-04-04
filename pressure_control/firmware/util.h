@@ -54,6 +54,14 @@ void udelay(uint16_t usecs);
 
 typedef _Bool		bool;
 
+/* Convert a number (0-F) to a hexadecimal ASCII digit */
+uint8_t hexdigit_to_ascii(uint8_t digit);
+
+#define NUM16_NR_DIGITS		5
+/* Convert a number to ascii.
+ * buf must be at least (NUM16_NR_DIGITS + 1) long */
+void num16_to_ascii(uint8_t *buf, uint16_t v);
+
 /* IRQ handling.
  * We use a macro for irq_disable_save(), because stupid gcc is not
  * able to properly optimize an inline function that returns a value.

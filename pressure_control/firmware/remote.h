@@ -71,8 +71,12 @@ struct remote_message {
 } __attribute__((packed));
 
 
+void print_sram(const char *msg);
 void print_pgm(const prog_char *msg);
 #define print(string_literal)	print_pgm(PSTR(string_literal))
+void print_dec(uint16_t number);
+void print_dec_signed(int16_t number);
+void print_hex(uint8_t number);
 
 void remote_pressure_change_notification(uint16_t mbar,
 					 uint16_t hysteresis);

@@ -261,11 +261,15 @@ class LogBrowser(QTextEdit):
 
 	def addText(self, text):
 		if self.needTimeStamp:
+			self.needTimeStamp = False
 			date = QDateTime.currentDateTime()
 			text = date.toString("[hh:mm:ss] ") + text
-		self.textCursor().setPosition(len(self.toPlainText()))
 		self.insertPlainText(text)
-		self.needTimeStamp = (text[-1] in QString("\r\n"))
+		if text[-1] in QString("\r\n"):
+			self.needTimeStamp = True
+		# Scroll to the end of the log
+		vScroll = self.verticalScrollBar()
+		vScroll.setValue(vScroll.maximum())
 
 class MainWidget(QWidget):
 	def __init__(self, parent=None):

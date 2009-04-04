@@ -20,6 +20,7 @@
 
 #include "sensor.h"
 #include "util.h"
+#include "remote.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -47,6 +48,8 @@ ISR(ADC_vect)
 
 	val = ADC;
 	sensor_disable();
+print_dec(val);
+print("\n");
 	//TODO process value
 	sensor_result(val);
 }
