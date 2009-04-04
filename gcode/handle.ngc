@@ -13,11 +13,11 @@
 #1	=	6		( cutter diameter )
 
 #10	=	2000	( min^-1 )
-#11	=	100		( feed in mm/min )
+#11	=	200		( feed in mm/min )
 #12	=	20		( Z-feed in mm/min )
 
 #20	=	3.5		( cutting depth in Z )
-#21	=	1		( cutting depth stepping )
+#21	=	0.2		( cutting depth stepping )
 
 
 G17 G40 G49 G80 G90 G94 G61 G21 ( Initial modes )
@@ -38,9 +38,9 @@ O901 while [#100 lt #20]
 
 	G41.1 D#1
 	G1 X10 Y27.5 ( entry move )
-	G1 X130
+	G1 X125
 	G1 Y26
-	G2 X99.049 Y9.5 I-30.952 J20.780
+	G2 X94.049 Y9.5 I-30.952 J20.780
 	G1 X13
 	G3 X9.290 Y6.996 I0 J-4
 	G1 X5.565 Y-2.244
