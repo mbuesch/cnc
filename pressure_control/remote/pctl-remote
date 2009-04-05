@@ -17,7 +17,12 @@
 
 import getopt
 import sys
-from serial.serialposix import *
+try:
+	from serial.serialposix import *
+except ImportError:
+	print "ERROR: pyserial module not available."
+	print "On Debian Linux please do:  apt-get install python-serial"
+	sys.exit(1)
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
