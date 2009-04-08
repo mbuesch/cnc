@@ -2,7 +2,7 @@
  *  Pneumatic pressure controller.
  *  Sensor input.
  *
- *  Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
+ *  Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,32 +26,48 @@
 #include <avr/interrupt.h>
 
 
-/*** The sensor enable signal ***/
+/* The sensor value offset, in millivolts.
+ * This value is subtracted from the measured voltage before
+ * processing. */
+#define SENSOR_MV_OFFSET	200
+
+/* The Full Scale Output (maximum) output value of the sensor,
+ * in millivolts. */
+#define SENSOR_FULL_SCALE_MV	U32(4700)
+
+/* The pressure at Full Scale Output, in millibar. */
+#define SENSOR_FULL_SCALE_MBAR	U32(10000)
+
+/* The sensor enable signal pin. */
 #define SENSOR_ENABLE_DDR	DDRC
 #define SENSOR_ENABLE_PORT	PORTC
 #define SENSOR_ENABLE_BIT	1
 
 
-static inline void sensor_enable(void)
-{
-	SENSOR_ENABLE_PORT |= (1 << SENSOR_ENABLE_BIT);
-}
 
-static inline void sensor_disable(void)
-{
-	SENSOR_ENABLE_PORT &= ~(1 << SENSOR_ENABLE_BIT);
-}
+#define ADC_MAX			U32(0x3FF)
 
 ISR(ADC_vect)
 {
-	uint16_t val;
+	const uint16_t full_scale_adc = ADC_MAX * SENSOR_FULL_SCALE_MV / 5000;
 
-	val = ADC;
-	sensor_disable();
-print_dec(val);
-print("\n");
-	//TODO process value
-	sensor_result(val);
+	uint16_t adc, mv, mbar;
+
+	/* Convert the ADC value to millivolts. */
+	adc = ADC;
+	if (adc > full_scale_adc)
+		adc = full_scale_adc;
+	mv = SENSOR_FULL_SCALE_MV * (uint32_t)adc / full_scale_adc;
+
+	/* Subtract the sensor voltage offset, so 0 mBar results in 0 mV. */
+	if (mv > SENSOR_MV_OFFSET)
+		mv -= SENSOR_MV_OFFSET;
+	else
+		mv = 0;
+
+	mbar = SENSOR_FULL_SCALE_MBAR * (uint32_t)mv / SENSOR_FULL_SCALE_MV;
+
+	sensor_result(mbar);
 }
 
 static inline void adc_trigger(bool with_irq)
@@ -67,18 +83,15 @@ static inline void adc_trigger(bool with_irq)
 
 void sensor_trigger_read(void)
 {
-	/* Enable the sensor and wait a dwell time for the
-	 * sensor to stabilize. */
-	sensor_enable();
-	udelay(500);
-	/* Finally trigger the ADC conversion. */
+	/* Trigger an ADC conversion with interrupt notification. */
 	adc_trigger(1);
 }
 
 void sensor_init(void)
 {
 	SENSOR_ENABLE_DDR |= (1 << SENSOR_ENABLE_BIT);
-	sensor_disable();
+	SENSOR_ENABLE_PORT |= (1 << SENSOR_ENABLE_BIT);
+	mdelay(20); /* Warm-up time */
 	/* Discard the first ADC result. */
 	adc_trigger(0);
 	while (ADCSRA & (1 << ADSC))

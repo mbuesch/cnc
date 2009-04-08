@@ -83,4 +83,11 @@ static inline void irq_restore(uint8_t sreg_flags)
 
 uint16_t crc16_block_update(uint16_t crc, const void *data, uint16_t size);
 
+/* Convenient casting macros. */
+#define U8(value)		((uint8_t)(value))
+#define U16(value)		((uint16_t)(value))
+#define U32(value)		((uint32_t)(value))
+#define U64(value)		((uint64_t)(value))
+
+
 #endif /* UTIL_H_ */
