@@ -49,6 +49,22 @@ static struct eeprom_data EEMEM eeprom = {
 };
 
 
+/* Load the configuration from the EEPROM. */
+static void eeprom_load_config(void)
+{
+	eeprom_busy_wait();
+	eeprom_read_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_busy_wait();
+}
+
+/* Store the configuration to the EEPROM. */
+static void eeprom_store_config(void)
+{
+	eeprom_busy_wait();
+	eeprom_write_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_busy_wait();
+}
+
 void get_pressure_config(struct pressure_config *ret)
 {
 	uint8_t sreg;
@@ -64,6 +80,7 @@ void set_pressure_config(struct pressure_config *new_cfg)
 
 	sreg = irq_disable_save();
 	memcpy(&cfg, new_cfg, sizeof(cfg));
+	eeprom_store_config();
 	irq_restore(sreg);
 }
 
@@ -74,22 +91,6 @@ void get_pressure_state(struct pressure_state *ret)
 	sreg = irq_disable_save();
 	memcpy(ret, &state, sizeof(*ret));
 	irq_restore(sreg);
-}
-
-/* Load the configuration from the EEPROM. */
-static void eeprom_load_config(void)
-{
-	eeprom_busy_wait();
-	eeprom_read_block(&cfg, &eeprom.cfg, sizeof(cfg));
-	eeprom_busy_wait();
-}
-
-/* Store the configuration to the EEPROM. */
-static void eeprom_store_config(void)
-{
-	eeprom_busy_wait();
-	eeprom_write_block(&cfg, &eeprom.cfg, sizeof(cfg));
-	eeprom_busy_wait();
 }
 
 /* Sensor measurement completed.
