@@ -384,6 +384,15 @@ void remote_pressure_change_notification(uint16_t mbar)
 	send_message(&msg);
 }
 
+void remote_notify_restart(void)
+{
+	struct remote_message msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.id = MSG_RESTARTED;
+	send_message(&msg);
+}
+
 #if USE_2X
 # define UBRR_FACTOR	2
 #else

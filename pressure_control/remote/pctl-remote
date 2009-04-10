@@ -55,6 +55,7 @@ MSG_GET_CONFIG_FLAGS		= 13
 MSG_CONFIG_FLAGS		= 14
 MSG_SET_CONFIG_FLAGS		= 15
 MSG_SET_VALVE			= 16
+MSG_RESTARTED			= 17
 # Message error codes
 MSG_ERR_NONE			= 0 # No error
 MSG_ERR_CHKSUM			= 1 # Checksum error
@@ -121,6 +122,8 @@ class RemoteProtocol(QObject):
 				     CONFIG_STOPBITS)
 		self.serial.flushInput()
 
+		self.devRestarted = False
+
 		self.pollTimer = QTimer(self)
 		self.connect(self.pollTimer, SIGNAL("timeout()"), self.poll)
 		self.pollTimer.start(50)
@@ -133,9 +136,12 @@ class RemoteProtocol(QObject):
 			mainwnd.centralWidget().log.addText("PING->PONG success. Device is alife.\n")
 
 	def poll(self):
-		if self.serial.inWaiting() < MSG_SIZE:
-			return
-		self.parseMessage(self.serial.read(MSG_SIZE))
+		if self.serial.inWaiting() >= MSG_SIZE:
+			self.parseMessage(self.serial.read(MSG_SIZE))
+		if self.devRestarted:
+			if mainwnd.centralWidget().fetchState():
+				mainwnd.centralWidget().log.addText(self.tr("Device rebooted\n"))
+				self.devRestarted = False
 
 	def checksumMessage(self, msg):
 		calc_crc = self.__crc16_update_buffer(0xFFFF, msg[0:-2])
@@ -158,7 +164,8 @@ class RemoteProtocol(QObject):
 			mainwnd.centralWidget().log.addText(str)
 		if (id == MSG_CURRENT_PRESSURE):
 			mainwnd.centralWidget().parseCurrentPressureMsg(msg)
-		#TODO
+		if (id == MSG_RESTARTED):
+			self.devRestarted = True
 
 	def getPayload(self, msg):
 		return msg[2:-2]
@@ -351,16 +358,17 @@ class MainWidget(QWidget):
 
 	def initializeState(self):
 		if not opt_nofetch:
-			self.__fetchState()
+			if not self.fetchState():
+				sys.exit(1)
 		self.initialized = True
 
-	def __fetchState(self):
+	def fetchState(self):
 		# Get the current pressure
 		reply = remote.sendMessageSyncReply(MSG_GET_CURRENT_PRESSURE, 0, "",
 						    MSG_CURRENT_PRESSURE)
 		if not reply:
 			print "Failed to fetch current pressure. No reply."
-			sys.exit(1)
+			return False
 		self.parseCurrentPressureMsg(reply)
 
 		# Get the desired pressure
@@ -368,7 +376,7 @@ class MainWidget(QWidget):
 						    MSG_DESIRED_PRESSURE)
 		if not reply:
 			print "Failed to fetch desired pressure. No reply."
-			sys.exit(1)
+			return False
 		reply = remote.getPayload(reply)
 		mbar = ord(reply[0]) | (ord(reply[1]) << 8)
 		self.pressureSpin.setValue(float(mbar) / 1000)
@@ -378,7 +386,7 @@ class MainWidget(QWidget):
 						    MSG_HYSTERESIS)
 		if not reply:
 			print "Failed to fetch hysteresis. No reply."
-			sys.exit(1)
+			return False
 		reply = remote.getPayload(reply)
 		mbar = ord(reply[0]) | (ord(reply[1]) << 8)
 		self.hystSpin.setValue(float(mbar) / 1000)
@@ -387,9 +395,11 @@ class MainWidget(QWidget):
 		flags = remote.configFlagsFetch()
 		if flags == None:
 			print "Failed to fetch config flags. No reply."
-			sys.exit(1)
+			return False
 		if flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
 			self.autoCheckbox.setCheckState(Qt.Checked)
+
+		return True
 
 	def parseCurrentPressureMsg(self, msg):
 		msg = remote.getPayload(msg)

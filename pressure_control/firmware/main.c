@@ -181,6 +181,8 @@ int main(void)
 	sei();
 
 	print("Monitoring...\n");
+	remote_work();
+	remote_notify_restart();
 	while (1) {
 		mb();
 		if (state.sensor_trigger_cnt == 0) {
