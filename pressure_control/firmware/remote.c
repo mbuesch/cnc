@@ -200,9 +200,13 @@ static void handle_received_message(void)
 		if (rx_msg.valve.nr == 0) {
 			valve0_switch(rx_msg.valve.state == 0 ?
 				      VALVE_STATE_12 : VALVE_STATE_14);
+			valve_wait_toggle();
+			valve0_switch(VALVE_STATE_IDLE);
 		} else if (rx_msg.valve.nr == 1) {
 			valve1_switch(rx_msg.valve.state == 0 ?
 				      VALVE_STATE_12 : VALVE_STATE_14);
+			valve_wait_toggle();
+			valve0_switch(VALVE_STATE_IDLE);
 		} else
 			err = MSG_ERR_INVAL;
 		break;
@@ -370,16 +374,9 @@ void remote_1khz_work(void)
 	usart_rx_timeout_check();
 }
 
-void remote_pressure_change_notification(uint16_t mbar,
-					 uint16_t hysteresis)
+void remote_pressure_change_notification(uint16_t mbar)
 {
 	struct remote_message msg;
-
-	static uint16_t prev_value;
-
-	if (abs((int32_t)mbar - (int32_t)prev_value) <= hysteresis)
-		return;
-	prev_value = mbar;
 
 	memset(&msg, 0, sizeof(msg));
 	msg.id = MSG_CURRENT_PRESSURE;

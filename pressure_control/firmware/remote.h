@@ -78,8 +78,7 @@ void print_dec(uint16_t number);
 void print_dec_signed(int16_t number);
 void print_hex(uint8_t number);
 
-void remote_pressure_change_notification(uint16_t mbar,
-					 uint16_t hysteresis);
+void remote_pressure_change_notification(uint16_t mbar);
 
 void remote_work(void);
 void remote_1khz_work(void);

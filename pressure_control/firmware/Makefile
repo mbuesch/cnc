@@ -9,7 +9,7 @@ CC		= avr-gcc
 OBJCOPY		= avr-objcopy
 SIZE		= avr-size
 
-CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -fomit-frame-pointer -Wall -fpack-struct
+CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -Wall
 CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
 
 

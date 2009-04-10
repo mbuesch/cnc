@@ -42,8 +42,8 @@ struct pressure_state state;
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
 	.cfg = {
-		.desired		= 4000,	/* 4 Bar */
-		.hysteresis		= 300,	/* 0.3 Bar */
+		.desired		= 4000,	/* Millibar */
+		.hysteresis		= 200,	/* Millibar */
 		.autoadjust_enable	= 1,
 	},
 };
@@ -118,30 +118,6 @@ void system_timer_init(void)
 	TIMSK |= (1 << OCIE1A);
 }
 
-static void valves_force_state(uint8_t new_state)
-{
-	if (state.valves == new_state)
-		return;
-	valves_global_switch(new_state);
-	state.valves = new_state;
-}
-
-static void adjust_pressure(uint16_t abs_offset, bool raise_pressure)
-{
-	if (0) {
-		//TODO if offset<value do only a short valve-open time.
-		valves_force_state(VALVES_IDLE);
-
-	} else {
-		/* Open the valve. It's closed again next time we check
-		 * the pressure and it's OK. */
-		if (raise_pressure)
-			valves_force_state(VALVES_FLOW_IN);
-		else
-			valves_force_state(VALVES_FLOW_OUT);
-	}
-}
-
 /* Check the current pressure value against the desired value and
  * adjust the pressure if needed. */
 static void check_pressure(void)
@@ -149,22 +125,41 @@ static void check_pressure(void)
 	int32_t offset;
 	uint16_t abs_offset;
 	bool is_too_big;
+	bool report_change = 0;
+	uint8_t cur_state;
 
 	if (cfg.autoadjust_enable) {
 		offset = (int32_t)state.mbar - (int32_t)cfg.desired;
 		abs_offset = abs(offset);
 		is_too_big = (offset >= 0);
+		cur_state = valves_get_global_state();
 
 		if (abs_offset > cfg.hysteresis) {
 			/* Adjust the pressure */
-			adjust_pressure(abs_offset, !is_too_big);
+			report_change = (cur_state == VALVES_IDLE);
+			if (is_too_big)
+				valves_global_switch(VALVES_FLOW_OUT);
+			else
+				valves_global_switch(VALVES_FLOW_IN);
+		} else if (abs_offset > cfg.hysteresis / 4) {
+			/* If we're idle, stay idle.
+			 * If we're increasing or decreasing pressure,
+			 * keep on doing this to reach the desired center value
+			 * more closely. */
 		} else {
-			/* The pressure is OK. Make sure the valves are
+			/* We're within half the hysteresis.
+			 * The pressure is OK. Make sure the valves are
 			 * all idle. */
-			valves_force_state(VALVES_IDLE);
+			report_change = (cur_state != VALVES_IDLE);
+			valves_global_switch(VALVES_IDLE);
 		}
 	}
-	remote_pressure_change_notification(state.mbar, cfg.hysteresis);
+	if (abs((int32_t)state.mbar - (int32_t)state.reported_mbar) >= 100)
+		report_change = 1;
+	if (report_change) {
+		remote_pressure_change_notification(state.mbar);
+		state.reported_mbar = state.mbar;
+	}
 }
 
 int main(void)
@@ -179,7 +174,6 @@ int main(void)
 	print("Pressure control initializing...\n");
 
 	valves_init();
-	state.valves = VALVES_IDLE;
 	sensor_init();
 	eeprom_load_config();
 	system_timer_init();

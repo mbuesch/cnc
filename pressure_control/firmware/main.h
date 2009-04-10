@@ -18,6 +18,8 @@ struct pressure_config {
 struct pressure_state {
 	/* Current pressure in the tank (in mBar) */
 	uint16_t mbar;
+	/* Reported pressure via RS232 */
+	uint16_t reported_mbar;
 	/* True, if the current pressure value needs checking against
 	 * the desired pressure config. */
 	bool needs_checking;
@@ -26,8 +28,6 @@ struct pressure_state {
 	 * 0  = trigger now
 	 * -1 = triggered and running. */
 	int8_t sensor_trigger_cnt;
-	/* Current valves state (enum valves_global_state) */
-	uint8_t valves;
 };
 
 void get_pressure_config(struct pressure_config *cfg);
