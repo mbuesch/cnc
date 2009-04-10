@@ -131,7 +131,10 @@ class RemoteProtocol(QObject):
 		if not opt_noping:
 			reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
 			if not reply:
-				print "Communication with device failed. No reply to PING request."
+				QMessageBox.critical(None,
+					"Pressure Control",
+					"Communication with device failed. "+\
+					"No reply to PING request.")
 				sys.exit(1)
 			mainwnd.centralWidget().log.hostLog("PING->PONG success. Device is alife.\n")
 
@@ -365,6 +368,10 @@ class MainWidget(QWidget):
 	def initializeState(self):
 		if not opt_nofetch:
 			if not self.fetchState():
+				QMessageBox.critical(None,
+					"Pressure Control",
+					"Failed to fetch active configuration "+\
+					"from device.")
 				sys.exit(1)
 		self.initialized = True
 
