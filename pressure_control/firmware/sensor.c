@@ -29,11 +29,11 @@
 /* The sensor value offset, in millivolts.
  * This value is subtracted from the measured voltage before
  * processing. */
-#define SENSOR_MV_OFFSET	200
+#define SENSOR_MV_OFFSET	245
 
 /* The Full Scale Output (maximum) output value of the sensor,
  * in millivolts. */
-#define SENSOR_FULL_SCALE_MV	U32(4700)
+#define SENSOR_FULL_SCALE_MV	U32(4400)
 
 /* The pressure at Full Scale Output, in millibar. */
 #define SENSOR_FULL_SCALE_MBAR	U32(10000)
