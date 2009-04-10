@@ -133,14 +133,14 @@ class RemoteProtocol(QObject):
 			if not reply:
 				print "Communication with device failed. No reply to PING request."
 				sys.exit(1)
-			mainwnd.centralWidget().log.addText("PING->PONG success. Device is alife.\n")
+			mainwnd.centralWidget().log.hostLog("PING->PONG success. Device is alife.\n")
 
 	def poll(self):
 		if self.serial.inWaiting() >= MSG_SIZE:
 			self.parseMessage(self.serial.read(MSG_SIZE))
 		if self.devRestarted:
 			if mainwnd.centralWidget().fetchState():
-				mainwnd.centralWidget().log.addText(self.tr("Device rebooted\n"))
+				mainwnd.centralWidget().log.hostLog(self.tr("Device rebooted\n"))
 				self.devRestarted = False
 
 	def checksumMessage(self, msg):
@@ -149,7 +149,7 @@ class RemoteProtocol(QObject):
 		want_crc = (ord(msg[-2]) | (ord(msg[-1]) << 8))
 		if calc_crc != want_crc:
 			text = self.tr("ERROR: message CRC mismatch\n")
-			mainwnd.centralWidget().log.addText(text)
+			mainwnd.centralWidget().log.hostLog(text)
 			self.serial.flushInput()
 			return False
 		return True
@@ -196,7 +196,7 @@ class RemoteProtocol(QObject):
 		"""Send a message and synchronously wait for the reply."""
 		self.pollTimer.stop()
 		self.sendMessage(id, flags, payload)
-		timeout = QDateTime.currentDateTime().addSecs(2)
+		timeout = QDateTime.currentDateTime().addSecs(1)
 		while True:
 			if QDateTime.currentDateTime() >= timeout:
 				msg = None
@@ -269,7 +269,7 @@ class LogBrowser(QTextEdit):
 
 		self.needTimeStamp = True
 		self.setReadOnly(1)
-		self.addText(self.tr("Pressure Control logging started\n"));
+		self.hostLog(self.tr("Pressure Control logging started\n"));
 
 	def addText(self, text):
 		if self.needTimeStamp:
@@ -282,6 +282,12 @@ class LogBrowser(QTextEdit):
 		# Scroll to the end of the log
 		vScroll = self.verticalScrollBar()
 		vScroll.setValue(vScroll.maximum())
+
+	def hostLog(self, text):
+		if not self.needTimeStamp:
+			self.addText("\n")
+		self.addText("Info: ")
+		self.addText(text)
 
 class MainWidget(QWidget):
 	def __init__(self, parent=None):
@@ -413,7 +419,7 @@ class MainWidget(QWidget):
 		data = "%c%c" % ((mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to change pressure. Error=%u\n" % err))
+			self.log.hostLog(self.tr("Failed to change pressure. Error=%u\n" % err))
 
 	def desiredHysteresisChanged(self, value):
 		if not self.initialized:
@@ -422,7 +428,7 @@ class MainWidget(QWidget):
 		data = "%c%c" % ((mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to change hysteresis. Error=%u\n" % err))
+			self.log.hostLog(self.tr("Failed to change hysteresis. Error=%u\n" % err))
 
 	def autoadjustChanged(self, state):
 		self.pressureSpin.setEnabled(state == Qt.Checked)
@@ -432,7 +438,7 @@ class MainWidget(QWidget):
 			return
 		flags = remote.configFlagsFetch()
 		if flags == None:
-			self.log.addText(self.tr("Failed to fetch config flags\n"))
+			self.log.hostLog(self.tr("Failed to fetch config flags\n"))
 			return
 		if state == Qt.Checked:
 			flags |= (1 << CFG_FLAG_AUTOADJUST_ENABLE)
@@ -440,27 +446,27 @@ class MainWidget(QWidget):
 			flags &= ~(1 << CFG_FLAG_AUTOADJUST_ENABLE)
 		err = remote.configFlagsSet(flags)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to set config flags\n"))
+			self.log.hostLog(self.tr("Failed to set config flags\n"))
 
 	def inValvePressed(self):
 		err = remote.setValve(0, 1)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to switch valve 0 ON\n"))
+			self.log.hostLog(self.tr("Failed to switch valve 0 ON\n"))
 
 	def inValveReleased(self):
 		err = remote.setValve(0, 0)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to switch valve 0 OFF\n"))
+			self.log.hostLog(self.tr("Failed to switch valve 0 OFF\n"))
 
 	def outValvePressed(self):
 		err = remote.setValve(1, 1)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to switch valve 1 ON\n"))
+			self.log.hostLog(self.tr("Failed to switch valve 1 ON\n"))
 
 	def outValveReleased(self):
 		err = remote.setValve(1, 0)
 		if err != MSG_ERR_NONE:
-			self.log.addText(self.tr("Failed to switch valve 1 OFF\n"))
+			self.log.hostLog(self.tr("Failed to switch valve 1 OFF\n"))
 
 class MainWindow(QMainWindow):
 	def __init__(self, parent=None):
@@ -479,7 +485,7 @@ class MainWindow(QMainWindow):
 		self.setStatusBar(StatusBar())
 		self.setCentralWidget(MainWidget())
 
-		self.resize(400, 500)
+		self.resize(400, 350)
 
 	def initializeState(self):
 		self.centralWidget().initializeState()

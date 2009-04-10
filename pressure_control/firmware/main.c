@@ -163,6 +163,20 @@ static void check_pressure(void)
 	}
 }
 
+static void print_banner(void)
+{
+	char str[128];
+
+	strcpy(str, "Pressure control -- " __DATE__ " -- GCC-");
+	num16_to_ascii((uint8_t *)str + strlen(str), __GNUC__);
+	strcat(str, ".");
+	num16_to_ascii((uint8_t *)str + strlen(str), __GNUC_MINOR__);
+	strcat(str, ".");
+	num16_to_ascii((uint8_t *)str + strlen(str), __GNUC_PATCHLEVEL__);
+	strcat(str, "\n");
+	print_sram(str);
+}
+
 int main(void)
 {
 	cli();
@@ -172,7 +186,7 @@ int main(void)
 	 * receive any remote commands, yet. But early init allows us
 	 * to send error messages early. */
 	remote_init();
-	print("Pressure control initializing...\n");
+	print_banner();
 
 	valves_init();
 	sensor_init();
