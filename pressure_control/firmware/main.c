@@ -28,6 +28,8 @@
 #include <string.h>
 
 #include <avr/eeprom.h>
+#include <avr/io.h>
+#include <avr/wdt.h>
 
 
 struct eeprom_data {
@@ -42,7 +44,7 @@ struct pressure_state state;
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
 	.cfg = {
-		.desired		= 4000,	/* Millibar */
+		.desired		= 2500,	/* Millibar */
 		.hysteresis		= 200,	/* Millibar */
 		.autoadjust_enable	= 1,
 	},
@@ -179,7 +181,20 @@ static void print_banner(void)
 
 int main(void)
 {
+	uint8_t mcucsr;
+
 	cli();
+	mcucsr = MCUCSR;
+	MCUCSR = 0;
+	wdt_disable();
+	if (mcucsr & (1 << BORF)) {
+		/* If we have a brownout, try to enter valve emergency state. */
+		valves_emergency_state();
+		mdelay(500);
+		/* This wasn't a real brownout, if we're still alife.
+		 * Go on with initialization. */
+	}
+	wdt_enable(WDTO_500MS);
 
 	/* It's OK to init the remote interface that early, as we
 	 * have IRQs disabled throughout the init process. So we can't
@@ -187,6 +202,8 @@ int main(void)
 	 * to send error messages early. */
 	remote_init();
 	print_banner();
+	if (!(mcucsr & (1 << PORF)) && (mcucsr & (1 << WDRF)))
+		print("WATCHDOG RESET!\n");
 
 	valves_init();
 	sensor_init();
@@ -208,11 +225,24 @@ int main(void)
 		}
 		if (state.needs_checking) {
 			check_pressure();
-			/* Trigger another measurement in 50 milliseconds. */
-			state.sensor_trigger_cnt = 50;
+			/* Trigger another measurement in 25 milliseconds. */
+			state.sensor_trigger_cnt = 25;
 			state.needs_checking = 0;
 			mb();
 		}
 		remote_work();
+		wdt_reset();
 	}
 }
+
+/* The fuse bits - AT_Mega8
+ * External clock, 0ms startup
+ * BOD 4.0V
+ * Boot vector disabled
+ * Preserve EEPROM disabled
+ * SPI enabled
+ */
+FUSES = {
+	.low	= 0x00,
+	.high	= 0xD9,
+};

@@ -13,18 +13,15 @@ CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -Wall
 CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
 
 
-# The fuse bits
-LFUSE	= 0xE0
-HFUSE	= 0xD9
-
 OBJECTS = main.o util.o valves.o sensor.o remote.o
 NAME	= pressure_control
 
 BIN	= $(NAME).bin
 HEX	= $(NAME).hex
 EEP	= $(NAME).eep.hex
+FUSES	= $(NAME).fuses.bin
 
-all: $(HEX)
+all: $(HEX) fuses
 
 main.o: util.h calibration.h valves.h sensor.h remote.h main.h
 
@@ -43,7 +40,7 @@ $(BIN): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(BIN) $(OBJECTS) $(LDFLAGS)
 
 $(HEX): $(BIN)
-	$(OBJCOPY) -R.eeprom -O ihex $(BIN) $(HEX)
+	$(OBJCOPY) -R.eeprom -R.fuse -O ihex $(BIN) $(HEX)
 	$(OBJCOPY) -j.eeprom --set-section-flags=.eeprom="alloc,load" \
 		   --change-section-lma .eeprom=0 -O ihex $(BIN) $(EEP)
 	$(SIZE) $(BIN)
@@ -68,17 +65,22 @@ reset:
 	 -c $(PROGRAMMER) -P $(PROGPORT) \
 	 -U signature:r:/dev/null:i -q -q
 
-writefuse:
+fuses: $(BIN)
+	$(OBJCOPY) -j.fuse -O binary $(BIN) $(FUSES)
+
+writefuses: fuses
+	@echo Low fuse is:  $$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 1)
+	@echo High fuse is: $$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 2)
 	$(AVRDUDE) -B 100 -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -q -q \
-	 -U lfuse:w:$(LFUSE):m \
-	 -U hfuse:w:$(HFUSE):m
+	 -U lfuse:w:$$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 1):m \
+	 -U hfuse:w:$$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 2):m
 
 clean:
 	-rm -f *~ *.o $(BIN)
 
 distclean: clean
-	-rm -f *.s $(HEX) $(EEP)
+	-rm -f *.s $(HEX) $(EEP) $(FUSES)
 
 help:
 	@echo "Makefile"

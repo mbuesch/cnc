@@ -85,9 +85,19 @@ uint8_t valves_get_global_state(void)
 	return current_global_state;
 }
 
-void valves_init(void)
+static inline void valves_ddr_setup(void)
 {
 	VALVE_DDR |= (1 << VALVE0_12) | (1 << VALVE0_14) |
 		     (1 << VALVE1_12) | (1 << VALVE1_14);
+}
+
+void valves_emergency_state(void)
+{
+	valves_init();
+}
+
+void valves_init(void)
+{
+	valves_ddr_setup();
 	valves_global_switch(VALVES_IDLE);
 }
