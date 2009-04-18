@@ -91,6 +91,14 @@ static inline void valves_ddr_setup(void)
 		     (1 << VALVE1_12) | (1 << VALVE1_14);
 }
 
+void valves_shutdown(void)
+{
+	valves_global_switch(VALVES_FLOW_OUT);
+	valve_wait_toggle();
+	valve0_switch(VALVE_STATE_IDLE);
+	valve1_switch(VALVE_STATE_IDLE);
+}
+
 void valves_emergency_state(void)
 {
 	valves_init();

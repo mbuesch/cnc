@@ -25,6 +25,8 @@ enum remote_message_id {
 	MSG_SET_CONFIG_FLAGS,
 	MSG_SET_VALVE,
 	MSG_RESTARTED,
+	MSG_SHUTDOWN,
+	MSG_TURNON,
 };
 
 enum remote_message_error {

@@ -179,6 +179,16 @@ static void print_banner(void)
 	print_sram(str);
 }
 
+void prepare_turn_on(void)
+{
+	state.device_enabled = 1;
+}
+
+void prepare_shutdown(void)
+{
+	state.device_enabled = 0;
+}
+
 int main(void)
 {
 	uint8_t mcucsr;
@@ -217,18 +227,24 @@ int main(void)
 	remote_notify_restart();
 	while (1) {
 		mb();
-		if (state.sensor_trigger_cnt == 0) {
-			/* It's time for triggering another sensor measurement. */
-			state.sensor_trigger_cnt = -1;
-			mb();
-			sensor_trigger_read();
-		}
-		if (state.needs_checking) {
-			check_pressure();
-			/* Trigger another measurement in 25 milliseconds. */
-			state.sensor_trigger_cnt = 25;
+		if (state.device_enabled) {
+			if (state.sensor_trigger_cnt == 0) {
+				/* It's time for triggering another
+				 * sensor measurement. */
+				state.sensor_trigger_cnt = -1;
+				mb();
+				sensor_trigger_read();
+			}
+			if (state.needs_checking) {
+				check_pressure();
+				/* Trigger another measurement in
+				 * a few milliseconds. */
+				state.sensor_trigger_cnt = 35;
+				state.needs_checking = 0;
+				mb();
+			}
+		} else {
 			state.needs_checking = 0;
-			mb();
 		}
 		remote_work();
 		wdt_reset();

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-#  Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
+#  Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License version 3
@@ -56,6 +56,8 @@ MSG_CONFIG_FLAGS		= 14
 MSG_SET_CONFIG_FLAGS		= 15
 MSG_SET_VALVE			= 16
 MSG_RESTARTED			= 17
+MSG_SHUTDOWN			= 18
+MSG_TURNON			= 19
 # Message error codes
 MSG_ERR_NONE			= 0 # No error
 MSG_ERR_CHKSUM			= 1 # Checksum error
@@ -371,7 +373,20 @@ class MainWidget(QWidget):
 				self.log.hostLog(
 					"Failed to fetch active configuration "+\
 					"from device.")
+		error = remote.sendMessageSyncError(MSG_TURNON, 0, "")
+		if error:
+			self.log.hostLog("Failed to turn on device")
+		else:
+			self.log.hostLog("Device turned on")
 		self.initialized = True
+
+	def shutdown(self):
+		if self.initialized:
+			error = remote.sendMessageSyncError(MSG_SHUTDOWN, 0, "")
+			if error != MSG_ERR_NONE:
+				QMessageBox.critical(self,
+					"Pressure Control",
+					"Failed to shutdown device")
 
 	def fetchState(self):
 		# Get the current pressure
@@ -494,6 +509,9 @@ class MainWindow(QMainWindow):
 	def initializeState(self):
 		self.centralWidget().initializeState()
 
+	def shutdown(self):
+		self.centralWidget().shutdown()
+
 	def about(self):
 		QMessageBox.information(self, self.tr("About"),
 					self.tr("Pneumatic pressure control\n"
@@ -514,7 +532,9 @@ def main():
 
 	mainwnd.initializeState()
 	mainwnd.show()
-	exit(app.exec_())
+	result = app.exec_()
+	mainwnd.shutdown()
+	exit(result)
 
 if __name__ == "__main__":
 	try:

@@ -28,6 +28,7 @@ static inline void valve_wait_toggle(void)
 
 void valves_init(void);
 void valves_emergency_state(void);
+void valves_shutdown(void);
 void valves_global_switch(uint8_t global_state);
 uint8_t valves_get_global_state(void);
 

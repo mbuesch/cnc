@@ -211,6 +211,13 @@ static void handle_received_message(void)
 			err = MSG_ERR_INVAL;
 		break;
 	}
+	case MSG_SHUTDOWN:
+		prepare_shutdown();
+		valves_shutdown();
+		break;
+	case MSG_TURNON:
+		prepare_turn_on();
+		break;
 	case MSG_INVALID:
 		break;
 	default:

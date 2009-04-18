@@ -16,6 +16,8 @@ struct pressure_config {
 };
 
 struct pressure_state {
+	/* Sensing and adjustment logic enabled? */
+	bool device_enabled;
 	/* Current pressure in the tank (in mBar) */
 	uint16_t mbar;
 	/* Reported pressure via RS232 */
@@ -33,5 +35,7 @@ struct pressure_state {
 void get_pressure_config(struct pressure_config *cfg);
 void set_pressure_config(struct pressure_config *cfg);
 void get_pressure_state(struct pressure_state *state);
+void prepare_turn_on(void);
+void prepare_shutdown(void);
 
 #endif /* MAIN_H_ */
