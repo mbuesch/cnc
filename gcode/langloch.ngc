@@ -1,0 +1,30 @@
+%
+G17 G40 G49 G80 G90 G94 G61 G21
+
+G54
+G0 X0 Y0 Z1
+
+( #1 = X offset, #2 = Y offset)
+O1 sub
+	#10 = 0
+	G0 X[#1 - 5] Y[#2]
+	O2 while [#10 gt -15.5]
+		G1 Z[#10] F15
+
+		G1 Y[#2 + 1.5] F100
+		G1 X[#1 + 5]
+		G1 Y[#2 - 1.5]
+		G1 X[#1 - 5]
+		G1 Y[#2]
+
+		#10 = [#10 - 0.4]
+	O2 endwhile
+	G0 Z2
+O1 endsub
+
+O1 call [-15] [0]
+O1 call [15] [0]
+
+M30
+%
+vim: syntax=rs274ngc ts=4 
