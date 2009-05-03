@@ -27,7 +27,7 @@ main.o: util.h calibration.h valves.h sensor.h remote.h main.h
 
 util.o: util.h calibration.h
 
-valves.o: util.h valves.h
+valves.o: util.h valves.h main.h
 
 sensor.o: util.h sensor.h
 

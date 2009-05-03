@@ -362,6 +362,9 @@ void print_hex(uint8_t number)
 /* Maintanance work. Called with IRQs enabled. */
 void remote_work(void)
 {
+	static jiffies_t last_timeout_check;
+	jiffies_t now = get_jiffies();
+
 	if (rx_msg_valid) {
 		handle_received_message();
 		mb();
@@ -372,13 +375,11 @@ void remote_work(void)
 		rx_softirq = 0;
 		usart_handle_rx_irq();
 	}
+	if (last_timeout_check != now) {
+		last_timeout_check = now;
+		usart_rx_timeout_check();
+	}
 	sei();
-}
-
-/* Maintanance work. Called at a frequency of 1KHz with IRQs disabled. */
-void remote_1khz_work(void)
-{
-	usart_rx_timeout_check();
 }
 
 void remote_pressure_change_notification(uint16_t mbar)

@@ -40,6 +40,9 @@ struct eeprom_data {
 struct pressure_config cfg;
 /* The pressure state data. */
 struct pressure_state state;
+/* The 1000Hz jiffies counter */
+static jiffies_t jiffies_counter;
+
 
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
@@ -106,12 +109,22 @@ void sensor_result(uint16_t mbar)
 	state.needs_checking = 1;
 }
 
+jiffies_t get_jiffies(void)
+{
+	uint16_t sreg;
+	jiffies_t j;
+
+	sreg = irq_disable_save();
+	j = jiffies_counter;
+	irq_restore(sreg);
+
+	return j;
+}
+
 /* 1kHz system timer. */
 ISR(TIMER1_COMPA_vect)
 {
-	if (state.sensor_trigger_cnt > 0)
-		state.sensor_trigger_cnt--;
-	remote_1khz_work();
+	jiffies_counter++;
 }
 
 void system_timer_init(void)
@@ -225,28 +238,33 @@ int main(void)
 	print("Monitoring...\n");
 	remote_work();
 	remote_notify_restart();
+	sensor_trigger_read();
 	while (1) {
+		static jiffies_t next_sensor_trigger;
+		static bool need_sensor_trigger;
+		jiffies_t now;
+
 		mb();
-		if (state.device_enabled) {
-			if (state.sensor_trigger_cnt == 0) {
-				/* It's time for triggering another
-				 * sensor measurement. */
-				state.sensor_trigger_cnt = -1;
-				mb();
-				sensor_trigger_read();
-			}
-			if (state.needs_checking) {
+		now = get_jiffies();
+		if (state.needs_checking) {
+			if (state.device_enabled)
 				check_pressure();
-				/* Trigger another measurement in
-				 * a few milliseconds. */
-				state.sensor_trigger_cnt = 35;
-				state.needs_checking = 0;
-				mb();
-			}
-		} else {
+			/* Trigger another measurement in
+			 * a few milliseconds. */
 			state.needs_checking = 0;
+			next_sensor_trigger = now + msec_to_jiffies(35);
+			mb();
+			need_sensor_trigger = 1;
+		}
+		if (need_sensor_trigger &&
+		    time_after(now, next_sensor_trigger)) {
+			/* It's time for triggering another
+			 * sensor measurement. */
+			need_sensor_trigger = 0;
+			sensor_trigger_read();
 		}
 		remote_work();
+		valves_work();
 		wdt_reset();
 	}
 }

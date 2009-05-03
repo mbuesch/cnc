@@ -20,6 +20,7 @@
 
 #include "valves.h"
 #include "util.h"
+#include "main.h"
 
 #include <avr/io.h>
 
@@ -34,6 +35,8 @@
 
 
 static uint8_t current_global_state = 0xFF;
+static bool need_switch_to_idle;
+static jiffies_t switch_to_idle_time;
 
 
 void valve0_switch(uint8_t state)
@@ -56,7 +59,6 @@ void valve1_switch(uint8_t state)
 
 void valves_global_switch(uint8_t state)
 {
-
 	if (state == current_global_state)
 		return;
 	current_global_state = state;
@@ -65,9 +67,6 @@ void valves_global_switch(uint8_t state)
 	case VALVES_IDLE:
 		valve0_switch(VALVE_STATE_12);
 		valve1_switch(VALVE_STATE_12);
-		valve_wait_toggle();
-		valve0_switch(VALVE_STATE_IDLE);
-		valve1_switch(VALVE_STATE_IDLE);
 		break;
 	case VALVES_FLOW_IN:
 		valve1_switch(VALVE_STATE_12);
@@ -77,6 +76,18 @@ void valves_global_switch(uint8_t state)
 		valve0_switch(VALVE_STATE_12);
 		valve1_switch(VALVE_STATE_14);
 		break;
+	}
+	switch_to_idle_time = get_jiffies() + msec_to_jiffies(VALVE_TOGGLE_MSEC);
+	need_switch_to_idle = 1;
+}
+
+void valves_work(void)
+{
+	if (need_switch_to_idle &&
+	    time_after(get_jiffies(), switch_to_idle_time)) {
+		need_switch_to_idle = 0;
+		valve0_switch(VALVE_STATE_IDLE);
+		valve1_switch(VALVE_STATE_IDLE);
 	}
 }
 
@@ -101,7 +112,11 @@ void valves_shutdown(void)
 
 void valves_emergency_state(void)
 {
-	valves_init();
+	valves_ddr_setup();
+	valves_global_switch(VALVES_IDLE);
+	valve_wait_toggle();
+	valve0_switch(VALVE_STATE_IDLE);
+	valve1_switch(VALVE_STATE_IDLE);
 }
 
 void valves_init(void)

@@ -20,13 +20,16 @@ enum valve_state {
 	VALVE_STATE_14,
 };
 
+#define VALVE_TOGGLE_MSEC	10
+
 /* Wait for the valve to toggle from one position to another. */
 static inline void valve_wait_toggle(void)
 {
-	mdelay(10);
+	mdelay(VALVE_TOGGLE_MSEC);
 }
 
 void valves_init(void);
+void valves_work(void);
 void valves_emergency_state(void);
 void valves_shutdown(void);
 void valves_global_switch(uint8_t global_state);

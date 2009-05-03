@@ -85,7 +85,6 @@ void remote_pressure_change_notification(uint16_t mbar);
 void remote_notify_restart(void);
 
 void remote_work(void);
-void remote_1khz_work(void);
 void remote_init(void);
 
 #endif /* REMOTE_H_ */
