@@ -169,6 +169,14 @@ static void check_pressure(void)
 			report_change = (cur_state != VALVES_IDLE);
 			valves_global_switch(VALVES_IDLE);
 		}
+		if (state.mbar < 800) {
+			/* If the pressure in the reservoir is low,
+			 * the feedforward of the pneumatic valve for
+			 * flow-out might not work correctly. So force poke
+			 * the valves again until we reach a good pressure. */
+			__valves_global_switch(valves_get_global_state());
+			valves_disarm_auto_idle();
+		}
 	}
 	if (abs((int32_t)state.mbar - (int32_t)state.reported_mbar) >= 100)
 		report_change = 1;

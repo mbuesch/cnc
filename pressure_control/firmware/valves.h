@@ -33,6 +33,8 @@ void valves_work(void);
 void valves_emergency_state(void);
 void valves_shutdown(void);
 void valves_global_switch(uint8_t global_state);
+void __valves_global_switch(uint8_t global_state);
+void valves_disarm_auto_idle(void);
 uint8_t valves_get_global_state(void);
 
 void valve0_switch(uint8_t state);

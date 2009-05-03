@@ -59,10 +59,12 @@ void valve1_switch(uint8_t state)
 
 void valves_global_switch(uint8_t state)
 {
-	if (state == current_global_state)
-		return;
-	current_global_state = state;
+	if (state != current_global_state)
+		__valves_global_switch(state);
+}
 
+void __valves_global_switch(uint8_t state)
+{
 	switch (state) {
 	case VALVES_IDLE:
 		valve0_switch(VALVE_STATE_12);
@@ -79,6 +81,12 @@ void valves_global_switch(uint8_t state)
 	}
 	switch_to_idle_time = get_jiffies() + msec_to_jiffies(VALVE_TOGGLE_MSEC);
 	need_switch_to_idle = 1;
+	current_global_state = state;
+}
+
+void valves_disarm_auto_idle(void)
+{
+	need_switch_to_idle = 0;
 }
 
 void valves_work(void)
@@ -104,7 +112,7 @@ static inline void valves_ddr_setup(void)
 
 void valves_shutdown(void)
 {
-	valves_global_switch(VALVES_FLOW_OUT);
+	__valves_global_switch(VALVES_FLOW_OUT);
 	valve_wait_toggle();
 	valve0_switch(VALVE_STATE_IDLE);
 	valve1_switch(VALVE_STATE_IDLE);
@@ -113,7 +121,7 @@ void valves_shutdown(void)
 void valves_emergency_state(void)
 {
 	valves_ddr_setup();
-	valves_global_switch(VALVES_IDLE);
+	__valves_global_switch(VALVES_IDLE);
 	valve_wait_toggle();
 	valve0_switch(VALVE_STATE_IDLE);
 	valve1_switch(VALVE_STATE_IDLE);
@@ -122,5 +130,5 @@ void valves_emergency_state(void)
 void valves_init(void)
 {
 	valves_ddr_setup();
-	valves_global_switch(VALVES_IDLE);
+	__valves_global_switch(VALVES_IDLE);
 }
