@@ -21,12 +21,6 @@ IMAGE2GCODE="image-to-gcode"
 # GNU bc calculator
 BC="bc"
 
-# Set to one, if using metric units. Set to zero, if using imperial units.
-METRIC=1
-# Resolution (in units; see above) for the mesh.
-# You also need to specify this value in image-to-gcode as "Pixel size"!
-MESH_RES="0.1"
-
 
 
 
@@ -36,12 +30,6 @@ log_file="$tmp_prefix.log"
 vrml_file="$tmp_prefix.vrml"
 pgm_file="$tmp_prefix.pgm"
 png_file="$tmp_prefix.png"
-
-if [ $METRIC -eq 0 ]; then
-	UNITS="inch"
-else
-	UNITS="mm"
-fi
 
 function cleanup
 {
@@ -102,20 +90,93 @@ function usage
 {
 	echo "BRL-CAD to GCODE (RS274NGC) converter"
 	echo
-	echo "Usage: $0 brlcad_db.g brlcad-db-object gcode.ngc"
+	echo "Usage: $0 [options] brlcad_db.g brlcad-db-object gcode.ngc"
+	echo
+	echo "Valid options are:"
+	echo "  --proj PLANE           The projection axis plane in the 3D data used"
+	echo "                         for the height in the heightmap."
+	echo "                         PLANE may be either of:"
+	echo "                         +z   -z   +y   -y   +x   -x"
+	echo "                         +z is default"
+	echo "  --imperial             If set, use imperial units (inch) instead of metric"
+	echo "                         units (mm)."
+	echo "  --meshres RES          Resolution (in units; see --imperial) for the mesh."
+	echo "                         You also need to specify this value in the"
+	echo "                         image-to-gcode dialog 'Pixel size' field!"
 }
 
-if [ $# -ne 3 ]; then
+METRIC=1
+projection="+z"
+meshres=
+brlcad_g_file=
+brlcad_g_object=
+ngc_file=
+
+# Parse commandline args
+while [ $# -gt 0 ]; do
+	case "$1" in
+	  --proj)
+		shift
+		if [ $# -lt 1 ]; then
+			echo "Missing argument to --proj"
+			cleanup_and_exit 1
+		fi
+		projection="$1"
+		case "$projection" in
+		  "+z" | "-z" | "+y" | "-y" | "+x" | "-x" )
+			;;
+		  *)
+			echo "Invalid --proj plane. Must be one of  +z  -z  +y  -y  +x  -x"
+			cleanup_and_exit 1
+			;;
+		esac
+		;;
+	  --imperial)
+		METRIC=0
+		;;
+	  --meshres)
+		shift
+		if [ $# -lt 1 ]; then
+			echo "Missing argument to --meshres"
+			cleanup_and_exit 1
+		fi
+		meshres="$1"
+		;;
+	  *)
+		if [ $# -ne 3 ]; then
+			usage
+			cleanup_and_exit 1
+		fi
+		brlcad_g_file="$1"
+		brlcad_g_object="$2"
+		ngc_file="$3"
+		break
+		;;
+	esac
+	shift
+done
+if [ -z "$brlcad_g_file" -o -z "$brlcad_g_object" -o -z "$ngc_file" ]; then
 	usage
-	exit 1
+	cleanup_and_exit 1
 fi
-brlcad_g_file="$1"
-brlcad_g_object="$2"
-ngc_file="$3"
 if ! [ -r "${brlcad_g_file}" ]; then
 	echo "ERROR: Could not read input .g file ${brlcad_g_file}"
-	exit 1
+	cleanup_and_exit 1
 fi
+
+if [ $METRIC -eq 0 ]; then
+	UNITS="inch"
+else
+	UNITS="mm"
+fi
+if [ -z "$meshres" ]; then
+	if [ $METRIC -eq 0 ]; then
+		meshres="0.004"
+	else
+		meshres="0.100"
+	fi
+fi
+
 
 
 # Convert the BRL-CAD database to VRML
@@ -128,12 +189,12 @@ if [ $res -ne 0 ]; then
 fi
 
 # Convert the VRML file to a PGM image
-r="$MESH_RES"
+r="$meshres"
 if [ $METRIC -eq 0 ]; then
 	r=$(echo "scale=6; $r * 25.4" | bc)
 fi
 echo "Converting VRML to PGM image (Mesh resolution = $r mm)..."
-$MESH2HMAP "--m-pix=$r" ${vrml_file} ${pgm_file} > ${log_file} 2>&1
+$MESH2HMAP "--normal=$projection" "--m-pix=$r" ${vrml_file} ${pgm_file} > ${log_file} 2>&1
 res=$?
 if [ $res -ne 0 ]; then
 	cat ${log_file}
@@ -154,7 +215,7 @@ fi
 echo "Converting PNG image to GCODE..."
 echo; echo
 echo "--- IMPORTANT ---"
-echo "Please use $MESH_RES $UNITS as 'Pixel size' inside of the following dialog box."
+echo "Please use $meshres $UNITS as 'Pixel size' inside of the following dialog box."
 echo "--- IMPORTANT ---"
 echo; echo
 $IMAGE2GCODE ${png_file} > ${ngc_file}
