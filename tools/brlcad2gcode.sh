@@ -53,6 +53,7 @@ function sigterm
 }
 
 trap sigterm TERM INT
+cleanup
 
 # check_tool(tool, args, expected_return_code, install_hint, debian_package)
 function check_tool
