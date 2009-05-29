@@ -19,6 +19,7 @@
 
 #include "util.h"
 #include "calibration.h"
+#include "remote.h"
 
 #include <util/crc16.h>
 #include <avr/io.h>
@@ -74,7 +75,7 @@ void udelay(uint16_t usecs)
 
 void panic(const prog_char *msg)
 {
-//TODO
+	print("Panic!");
 	infinite_sleep();
 }
 

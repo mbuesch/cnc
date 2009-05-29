@@ -36,8 +36,6 @@ ISR(ADC_vect)
 	const uint16_t full_scale_adc = ADC_MAX * (uint32_t)s->full_scale_mv / 5000;
 	uint16_t adc, mv, mbar;
 
-	BUG_ON(!active_sensor);
-
 	/* Convert the ADC value to millivolts. */
 	adc = ADC;
 	if (adc > full_scale_adc)
@@ -52,8 +50,7 @@ ISR(ADC_vect)
 
 	mbar = (uint32_t)s->full_scale_mbar * (uint32_t)mv / (uint32_t)s->full_scale_mv;
 
-	sensor_result(active_sensor, mbar);
-	active_sensor = NULL;
+	sensor_result(s, mbar);
 }
 
 static inline void adc_trigger(uint8_t mux, bool with_irq)
@@ -69,7 +66,6 @@ static inline void adc_trigger(uint8_t mux, bool with_irq)
 
 void sensor_trigger_read(struct sensor *s)
 {
-	BUG_ON(active_sensor);
 	active_sensor = s;
 	mb();
 	/* Trigger an ADC conversion with interrupt notification. */
