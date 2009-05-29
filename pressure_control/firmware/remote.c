@@ -119,9 +119,10 @@ static void handle_received_message(void)
 	case MSG_GET_CURRENT_PRESSURE: {
 		struct pressure_state state;
 
+//FIXME
 		get_pressure_state(&state);
 		reply.id = MSG_CURRENT_PRESSURE;
-		reply.pressure.mbar = state.mbar;
+		reply.pressure.mbar = state.measured_mbar;
 		send_message(&reply);
 		break;
 	}

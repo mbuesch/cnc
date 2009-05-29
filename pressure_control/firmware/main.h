@@ -26,6 +26,11 @@ typedef int16_t s_jiffies_t;
 
 jiffies_t get_jiffies(void);
 
+enum {
+	SENSOR_CYCLE_XY = 0,
+	SENSOR_CYCLE_Z,
+	__NR_SENSOR_CYCLE,
+};
 
 struct pressure_config {
 	/* Desired pressure in mBar */
@@ -39,8 +44,8 @@ struct pressure_config {
 struct pressure_state {
 	/* Sensing and adjustment logic enabled? */
 	bool device_enabled;
-	/* Current pressure in the tank (in mBar) */
-	uint16_t mbar;
+	/* The last measured pressure (in mBar) */
+	uint16_t measured_mbar;
 	/* Reported pressure via RS232 */
 	uint16_t reported_mbar;
 	/* True, if the current pressure value needs checking against

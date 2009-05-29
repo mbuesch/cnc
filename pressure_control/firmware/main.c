@@ -48,6 +48,8 @@ DEFINE_VALVE(z_control_valves, C, 2, 3, 4, 5);
 static DEFINE_SENSOR(xy_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(z_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
+static uint8_t sensor_cycle;
+
 
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
@@ -106,10 +108,10 @@ void get_pressure_state(struct pressure_state *ret)
 /* Sensor measurement completed.
  * Called in IRQ context. */
 void sensor_result(struct sensor *s, uint16_t mbar)
-{//XXX
+{
 	/* Defer processing of the value to the mainloop, so we can do it with
 	 * interrupts enabled. */
-	state.mbar = mbar;
+	state.measured_mbar = mbar;
 	mb();
 	state.needs_checking = 1;
 }
@@ -141,7 +143,7 @@ void system_timer_init(void)
 
 /* Check the current pressure value against the desired value and
  * adjust the pressure if needed. */
-static void check_pressure(void)
+static void do_check_pressure(struct valves *valves, uint16_t mbar)
 {
 	int32_t offset;
 	uint16_t abs_offset;
@@ -150,18 +152,18 @@ static void check_pressure(void)
 	uint8_t cur_state;
 
 	if (cfg.autoadjust_enable) {
-		offset = (int32_t)state.mbar - (int32_t)cfg.desired;
+		offset = (int32_t)mbar - (int32_t)cfg.desired;
 		abs_offset = abs(offset);
 		is_too_big = (offset >= 0);
-		cur_state = valves_get_global_state(&xy_control_valves);
+		cur_state = valves_get_global_state(valves);
 
 		if (abs_offset > cfg.hysteresis) {
 			/* Adjust the pressure */
 			report_change = (cur_state == VALVES_IDLE);
 			if (is_too_big)
-				valves_global_switch(&xy_control_valves, VALVES_FLOW_OUT);
+				valves_global_switch(valves, VALVES_FLOW_OUT);
 			else
-				valves_global_switch(&xy_control_valves, VALVES_FLOW_IN);
+				valves_global_switch(valves, VALVES_FLOW_IN);
 		} else if (abs_offset > cfg.hysteresis / 4) {
 			/* If we're idle, stay idle.
 			 * If we're increasing or decreasing pressure,
@@ -172,23 +174,37 @@ static void check_pressure(void)
 			 * The pressure is OK. Make sure the valves are
 			 * all idle. */
 			report_change = (cur_state != VALVES_IDLE);
-			valves_global_switch(&xy_control_valves, VALVES_IDLE);
+			valves_global_switch(valves, VALVES_IDLE);
 		}
-		if (state.mbar < 800) {
+		if (mbar < 800) {
 			/* If the pressure in the reservoir is low,
 			 * the feedforward of the pneumatic valve for
 			 * flow-out might not work correctly. So force poke
 			 * the valves again until we reach a good pressure. */
-			__valves_global_switch(&xy_control_valves,
-				valves_get_global_state(&xy_control_valves));
-			valves_disarm_auto_idle(&xy_control_valves);
+			__valves_global_switch(valves,
+				valves_get_global_state(valves));
+			valves_disarm_auto_idle(valves);
 		}
 	}
-	if (abs((int32_t)state.mbar - (int32_t)state.reported_mbar) >= 100)
+	if (abs((int32_t)mbar - (int32_t)state.reported_mbar) >= 100)
 		report_change = 1;
 	if (report_change) {
-		remote_pressure_change_notification(state.mbar);
-		state.reported_mbar = state.mbar;
+		remote_pressure_change_notification(mbar);
+		state.reported_mbar = mbar;
+	}
+}
+
+static void check_pressure(void)
+{
+	switch (sensor_cycle) {
+	case SENSOR_CYCLE_XY:
+		do_check_pressure(&xy_control_valves, state.measured_mbar);
+		break;
+	case SENSOR_CYCLE_Z:
+		do_check_pressure(&z_control_valves, state.measured_mbar);
+		break;
+	default:
+		BUG_ON(1);
 	}
 }
 
@@ -227,6 +243,7 @@ int main(void)
 	if (mcucsr & (1 << BORF)) {
 		/* If we have a brownout, try to enter valve emergency state. */
 		valves_emergency_state(&xy_control_valves);
+		valves_emergency_state(&z_control_valves);
 		mdelay(500);
 		/* This wasn't a real brownout, if we're still alife.
 		 * Go on with initialization. */
@@ -243,7 +260,9 @@ int main(void)
 		print("WATCHDOG RESET!\n");
 
 	valves_init(&xy_control_valves);
+	valves_init(&z_control_valves);
 	sensor_init(&xy_control_sensor);
+	sensor_init(&z_control_sensor);
 	eeprom_load_config();
 	system_timer_init();
 
@@ -252,6 +271,7 @@ int main(void)
 	print("Monitoring...\n");
 	remote_work();
 	remote_notify_restart();
+	sensor_cycle = SENSOR_CYCLE_XY;
 	sensor_trigger_read(&xy_control_sensor);
 	while (1) {
 		static jiffies_t next_sensor_trigger;
@@ -265,8 +285,10 @@ int main(void)
 				check_pressure();
 			/* Trigger another measurement in
 			 * a few milliseconds. */
+			if (++sensor_cycle == __NR_SENSOR_CYCLE)
+				sensor_cycle = 0;
 			state.needs_checking = 0;
-			next_sensor_trigger = now + msec_to_jiffies(35);
+			next_sensor_trigger = now + msec_to_jiffies(20);
 			mb();
 			need_sensor_trigger = 1;
 		}
@@ -275,10 +297,20 @@ int main(void)
 			/* It's time for triggering another
 			 * sensor measurement. */
 			need_sensor_trigger = 0;
-			sensor_trigger_read(&xy_control_sensor);
+			switch (sensor_cycle) {
+			case SENSOR_CYCLE_XY:
+				sensor_trigger_read(&xy_control_sensor);
+				break;
+			case SENSOR_CYCLE_Z:
+				sensor_trigger_read(&z_control_sensor);
+				break;
+			default:
+				BUG_ON(1);
+			}
 		}
 		remote_work();
 		valves_work(&xy_control_valves);
+		valves_work(&z_control_valves);
 		wdt_reset();
 	}
 }

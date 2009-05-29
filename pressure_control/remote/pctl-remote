@@ -320,7 +320,7 @@ class MainWidget(QWidget):
 		self.hystSpin = QDoubleSpinBox(self)
 		self.hystSpin.setMinimum(0.1)
 		self.hystSpin.setMaximum(8)
-		self.hystSpin.setSingleStep(0.1)
+		self.hystSpin.setSingleStep(0.05)
 		self.hystSpin.setSuffix(self.tr(" Bar"))
 		self.connect(self.hystSpin, SIGNAL("valueChanged(double)"),
 			     self.desiredHysteresisChanged)
