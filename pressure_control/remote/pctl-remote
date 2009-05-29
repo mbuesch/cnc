@@ -146,6 +146,7 @@ class RemoteProtocol(QObject):
 		if self.devRestarted:
 			if mainwnd.centralWidget().fetchState():
 				mainwnd.centralWidget().log.hostLog(self.tr("Device rebooted\n"))
+				mainwnd.centralWidget().turnOnDevice()
 				self.devRestarted = False
 
 	def checksumMessage(self, msg):
@@ -373,12 +374,15 @@ class MainWidget(QWidget):
 				self.log.hostLog(
 					"Failed to fetch active configuration "+\
 					"from device.")
+		self.turnOnDevice()
+		self.initialized = True
+
+	def turnOnDevice(self):
 		error = remote.sendMessageSyncError(MSG_TURNON, 0, "")
 		if error:
 			self.log.hostLog("Failed to turn on device")
 		else:
 			self.log.hostLog("Device turned on")
-		self.initialized = True
 
 	def shutdown(self):
 		if self.initialized:
