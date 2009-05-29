@@ -90,4 +90,14 @@ uint16_t crc16_block_update(uint16_t crc, const void *data, uint16_t size);
 #define U64(value)		((uint64_t)(value))
 
 
+/* Convert a bit-number to a bit-mask.
+ * Only valid for bitnr<=7.
+ */
+extern const prog_uint8_t bit2mask_lt[];
+#undef BITMASK8
+#define BITMASK8(bitnr)					\
+	(__builtin_constant_p(bitnr) ? (1<<(bitnr)) :	\
+	 pgm_read_byte(&bit2mask_lt[(bitnr)]))
+
+
 #endif /* UTIL_H_ */

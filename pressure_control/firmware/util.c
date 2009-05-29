@@ -25,6 +25,11 @@
 #include <avr/sleep.h>
 
 
+const prog_uint8_t bit2mask_lt[] = {
+	0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+};
+
+
 void mdelay(uint16_t msecs)
 {
 	uint8_t timer, i;

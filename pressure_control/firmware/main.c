@@ -1,7 +1,7 @@
 /*
  *  Pneumatic pressure controller.
  *
- *  Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
+ *  Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,11 @@ struct pressure_config cfg;
 struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
+
+DEFINE_VALVE(xy_control_valves, D, 6, 7, 4, 5);
+DEFINE_VALVE(z_control_valves, C, 2, 3, 4, 5);
+static DEFINE_SENSOR(xy_control_sensor, 0, 245, 4400, 10000);
+static DEFINE_SENSOR(z_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
 
 /* EEPROM contents */
@@ -100,8 +105,8 @@ void get_pressure_state(struct pressure_state *ret)
 
 /* Sensor measurement completed.
  * Called in IRQ context. */
-void sensor_result(uint16_t mbar)
-{
+void sensor_result(struct sensor *s, uint16_t mbar)
+{//XXX
 	/* Defer processing of the value to the mainloop, so we can do it with
 	 * interrupts enabled. */
 	state.mbar = mbar;
@@ -148,15 +153,15 @@ static void check_pressure(void)
 		offset = (int32_t)state.mbar - (int32_t)cfg.desired;
 		abs_offset = abs(offset);
 		is_too_big = (offset >= 0);
-		cur_state = valves_get_global_state();
+		cur_state = valves_get_global_state(&xy_control_valves);
 
 		if (abs_offset > cfg.hysteresis) {
 			/* Adjust the pressure */
 			report_change = (cur_state == VALVES_IDLE);
 			if (is_too_big)
-				valves_global_switch(VALVES_FLOW_OUT);
+				valves_global_switch(&xy_control_valves, VALVES_FLOW_OUT);
 			else
-				valves_global_switch(VALVES_FLOW_IN);
+				valves_global_switch(&xy_control_valves, VALVES_FLOW_IN);
 		} else if (abs_offset > cfg.hysteresis / 4) {
 			/* If we're idle, stay idle.
 			 * If we're increasing or decreasing pressure,
@@ -167,15 +172,16 @@ static void check_pressure(void)
 			 * The pressure is OK. Make sure the valves are
 			 * all idle. */
 			report_change = (cur_state != VALVES_IDLE);
-			valves_global_switch(VALVES_IDLE);
+			valves_global_switch(&xy_control_valves, VALVES_IDLE);
 		}
 		if (state.mbar < 800) {
 			/* If the pressure in the reservoir is low,
 			 * the feedforward of the pneumatic valve for
 			 * flow-out might not work correctly. So force poke
 			 * the valves again until we reach a good pressure. */
-			__valves_global_switch(valves_get_global_state());
-			valves_disarm_auto_idle();
+			__valves_global_switch(&xy_control_valves,
+				valves_get_global_state(&xy_control_valves));
+			valves_disarm_auto_idle(&xy_control_valves);
 		}
 	}
 	if (abs((int32_t)state.mbar - (int32_t)state.reported_mbar) >= 100)
@@ -220,7 +226,7 @@ int main(void)
 	wdt_disable();
 	if (mcucsr & (1 << BORF)) {
 		/* If we have a brownout, try to enter valve emergency state. */
-		valves_emergency_state();
+		valves_emergency_state(&xy_control_valves);
 		mdelay(500);
 		/* This wasn't a real brownout, if we're still alife.
 		 * Go on with initialization. */
@@ -236,8 +242,8 @@ int main(void)
 	if (!(mcucsr & (1 << PORF)) && (mcucsr & (1 << WDRF)))
 		print("WATCHDOG RESET!\n");
 
-	valves_init();
-	sensor_init();
+	valves_init(&xy_control_valves);
+	sensor_init(&xy_control_sensor);
 	eeprom_load_config();
 	system_timer_init();
 
@@ -246,7 +252,7 @@ int main(void)
 	print("Monitoring...\n");
 	remote_work();
 	remote_notify_restart();
-	sensor_trigger_read();
+	sensor_trigger_read(&xy_control_sensor);
 	while (1) {
 		static jiffies_t next_sensor_trigger;
 		static bool need_sensor_trigger;
@@ -269,10 +275,10 @@ int main(void)
 			/* It's time for triggering another
 			 * sensor measurement. */
 			need_sensor_trigger = 0;
-			sensor_trigger_read();
+			sensor_trigger_read(&xy_control_sensor);
 		}
 		remote_work();
-		valves_work();
+		valves_work(&xy_control_valves);
 		wdt_reset();
 	}
 }

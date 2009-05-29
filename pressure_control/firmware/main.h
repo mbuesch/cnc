@@ -59,4 +59,10 @@ void get_pressure_state(struct pressure_state *state);
 void prepare_turn_on(void);
 void prepare_shutdown(void);
 
+
+struct valves;
+extern struct valves xy_control_valves;
+extern struct valves z_control_valves;
+
+
 #endif /* MAIN_H_ */

@@ -183,7 +183,7 @@ static void handle_received_message(void)
 		if (conf.autoadjust_enable != flag) {
 			conf.autoadjust_enable = flag;
 			/* Make sure the values are idle. */
-			valves_global_switch(VALVES_IDLE);
+			valves_global_switch(&xy_control_valves, VALVES_IDLE);
 		}
 		set_pressure_config(&conf);
 		sei();
@@ -198,22 +198,22 @@ static void handle_received_message(void)
 			break;
 		}
 		if (rx_msg.valve.nr == 0) {
-			valve0_switch(rx_msg.valve.state == 0 ?
+			valve0_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
 				      VALVE_STATE_12 : VALVE_STATE_14);
-			valve_wait_toggle();
-			valve0_switch(VALVE_STATE_IDLE);
+			valve_wait_toggle(&xy_control_valves);
+			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
 		} else if (rx_msg.valve.nr == 1) {
-			valve1_switch(rx_msg.valve.state == 0 ?
+			valve1_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
 				      VALVE_STATE_12 : VALVE_STATE_14);
-			valve_wait_toggle();
-			valve0_switch(VALVE_STATE_IDLE);
+			valve_wait_toggle(&xy_control_valves);
+			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
 		} else
 			err = MSG_ERR_INVAL;
 		break;
 	}
 	case MSG_SHUTDOWN:
 		prepare_shutdown();
-		valves_shutdown();
+		valves_shutdown(&xy_control_valves);
 		break;
 	case MSG_TURNON:
 		prepare_turn_on();

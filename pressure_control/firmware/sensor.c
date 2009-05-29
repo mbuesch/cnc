@@ -26,54 +26,40 @@
 #include <avr/interrupt.h>
 
 
-/* The sensor value offset, in millivolts.
- * This value is subtracted from the measured voltage before
- * processing. */
-#define SENSOR_MV_OFFSET	245
-
-/* The Full Scale Output (maximum) output value of the sensor,
- * in millivolts. */
-#define SENSOR_FULL_SCALE_MV	U32(4400)
-
-/* The pressure at Full Scale Output, in millibar. */
-#define SENSOR_FULL_SCALE_MBAR	U32(10000)
-
-/* The sensor enable signal pin. */
-#define SENSOR_ENABLE_DDR	DDRC
-#define SENSOR_ENABLE_PORT	PORTC
-#define SENSOR_ENABLE_BIT	1
-
-
+static struct sensor *active_sensor;
 
 #define ADC_MAX			U32(0x3FF)
 
 ISR(ADC_vect)
 {
-	const uint16_t full_scale_adc = ADC_MAX * SENSOR_FULL_SCALE_MV / 5000;
-
+	struct sensor *s = active_sensor;
+	const uint16_t full_scale_adc = ADC_MAX * (uint32_t)s->full_scale_mv / 5000;
 	uint16_t adc, mv, mbar;
+
+	BUG_ON(!active_sensor);
 
 	/* Convert the ADC value to millivolts. */
 	adc = ADC;
 	if (adc > full_scale_adc)
 		adc = full_scale_adc;
-	mv = SENSOR_FULL_SCALE_MV * (uint32_t)adc / full_scale_adc;
+	mv = (uint32_t)s->full_scale_mv * (uint32_t)adc / full_scale_adc;
 
 	/* Subtract the sensor voltage offset, so 0 mBar results in 0 mV. */
-	if (mv > SENSOR_MV_OFFSET)
-		mv -= SENSOR_MV_OFFSET;
+	if (mv > s->mv_offset)
+		mv -= s->mv_offset;
 	else
 		mv = 0;
 
-	mbar = SENSOR_FULL_SCALE_MBAR * (uint32_t)mv / SENSOR_FULL_SCALE_MV;
+	mbar = (uint32_t)s->full_scale_mbar * (uint32_t)mv / (uint32_t)s->full_scale_mv;
 
-	sensor_result(mbar);
+	sensor_result(active_sensor, mbar);
+	active_sensor = NULL;
 }
 
-static inline void adc_trigger(bool with_irq)
+static inline void adc_trigger(uint8_t mux, bool with_irq)
 {
 	/* Set the multiplexer to ADC-0, AVcc Ref. */
-	ADMUX = (1 << REFS0);
+	ADMUX = (1 << REFS0) | mux;
 	/* Start ADC with a prescaler of 128. That's a ADC freq
 	 * of 125kHz on a 16MHz crystal. */
 	ADCSRA = (1 << ADEN) | (1 << ADSC) |
@@ -81,19 +67,20 @@ static inline void adc_trigger(bool with_irq)
 		 (with_irq ? (1 << ADIE) : 0);
 }
 
-void sensor_trigger_read(void)
+void sensor_trigger_read(struct sensor *s)
 {
+	BUG_ON(active_sensor);
+	active_sensor = s;
+	mb();
 	/* Trigger an ADC conversion with interrupt notification. */
-	adc_trigger(1);
+	adc_trigger(s->adc_mux, 1);
 }
 
-void sensor_init(void)
+void sensor_init(struct sensor *s)
 {
-	SENSOR_ENABLE_DDR |= (1 << SENSOR_ENABLE_BIT);
-	SENSOR_ENABLE_PORT |= (1 << SENSOR_ENABLE_BIT);
 	mdelay(20); /* Warm-up time */
 	/* Discard the first ADC result. */
-	adc_trigger(0);
+	adc_trigger(s->adc_mux, 0);
 	while (ADCSRA & (1 << ADSC))
 		mb();
 }

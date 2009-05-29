@@ -25,7 +25,7 @@
 #include <avr/io.h>
 
 
-/*** Valve interface definitions ***/
+/*** Valve interface definitions ***///XXX
 #define VALVE_DDR		DDRD
 #define VALVE_PORT		PORTD
 #define VALVE0_14		6 /* Pin for valve-0 position 14 */
@@ -33,102 +33,89 @@
 #define VALVE1_14		4 /* Pin for valve-1 position 14 */
 #define VALVE1_12		5 /* Pin for valve-1 position 12 */
 
+#define MMIO8(mem_addr)		_MMIO_BYTE(mem_addr)
 
-static uint8_t current_global_state = 0xFF;
-static bool need_switch_to_idle;
-static jiffies_t switch_to_idle_time;
-
-
-void valve0_switch(uint8_t state)
+void valve0_switch(struct valves *v, uint8_t state)
 {
-	VALVE_PORT &= ~((1 << VALVE0_12) | (1 << VALVE0_14));
+	MMIO8(v->port) &= ~(BITMASK8(v->bit_0_12) | BITMASK8(v->bit_0_14));
 	if (state == VALVE_STATE_12)
-		VALVE_PORT |= (1 << VALVE0_12);
+		MMIO8(v->port) |= BITMASK8(v->bit_0_12);
 	else if (state == VALVE_STATE_14)
-		VALVE_PORT |= (1 << VALVE0_14);
+		MMIO8(v->port) |= BITMASK8(v->bit_0_14);
 }
 
-void valve1_switch(uint8_t state)
+void valve1_switch(struct valves *v, uint8_t state)
 {
-	VALVE_PORT &= ~((1 << VALVE1_12) | (1 << VALVE1_14));
+	MMIO8(v->port) &= ~(BITMASK8(v->bit_1_12) | BITMASK8(v->bit_1_14));
 	if (state == VALVE_STATE_12)
-		VALVE_PORT |= (1 << VALVE1_12);
+		MMIO8(v->port) |= BITMASK8(v->bit_1_12);
 	else if (state == VALVE_STATE_14)
-		VALVE_PORT |= (1 << VALVE1_14);
+		MMIO8(v->port) |= BITMASK8(v->bit_1_14);
 }
 
-void valves_global_switch(uint8_t state)
+void valves_global_switch(struct valves *v, uint8_t state)
 {
-	if (state != current_global_state)
-		__valves_global_switch(state);
+	if (state != v->current_global_state)
+		__valves_global_switch(v, state);
 }
 
-void __valves_global_switch(uint8_t state)
+void __valves_global_switch(struct valves *v, uint8_t state)
 {
 	switch (state) {
 	case VALVES_IDLE:
-		valve0_switch(VALVE_STATE_12);
-		valve1_switch(VALVE_STATE_12);
+		valve0_switch(v, VALVE_STATE_12);
+		valve1_switch(v, VALVE_STATE_12);
 		break;
 	case VALVES_FLOW_IN:
-		valve1_switch(VALVE_STATE_12);
-		valve0_switch(VALVE_STATE_14);
+		valve1_switch(v, VALVE_STATE_12);
+		valve0_switch(v, VALVE_STATE_14);
 		break;
 	case VALVES_FLOW_OUT:
-		valve0_switch(VALVE_STATE_12);
-		valve1_switch(VALVE_STATE_14);
+		valve0_switch(v, VALVE_STATE_12);
+		valve1_switch(v, VALVE_STATE_14);
 		break;
 	}
-	switch_to_idle_time = get_jiffies() + msec_to_jiffies(VALVE_TOGGLE_MSEC);
-	need_switch_to_idle = 1;
-	current_global_state = state;
+	v->switch_to_idle_time = get_jiffies() + msec_to_jiffies(VALVE_TOGGLE_MSEC);
+	v->need_switch_to_idle = 1;
+	v->current_global_state = state;
 }
 
-void valves_disarm_auto_idle(void)
+void valves_work(struct valves *v)
 {
-	need_switch_to_idle = 0;
-}
-
-void valves_work(void)
-{
-	if (need_switch_to_idle &&
-	    time_after(get_jiffies(), switch_to_idle_time)) {
-		need_switch_to_idle = 0;
-		valve0_switch(VALVE_STATE_IDLE);
-		valve1_switch(VALVE_STATE_IDLE);
+	if (v->need_switch_to_idle &&
+	    time_after(get_jiffies(), v->switch_to_idle_time)) {
+		v->need_switch_to_idle = 0;
+		valve0_switch(v, VALVE_STATE_IDLE);
+		valve1_switch(v, VALVE_STATE_IDLE);
 	}
 }
 
-uint8_t valves_get_global_state(void)
+static inline void valves_ddr_setup(struct valves *v)
 {
-	return current_global_state;
+	MMIO8(v->ddr) |= BITMASK8(v->bit_0_12) | BITMASK8(v->bit_0_14) |
+			 BITMASK8(v->bit_1_12) | BITMASK8(v->bit_1_14);
 }
 
-static inline void valves_ddr_setup(void)
+void valves_shutdown(struct valves *v)
 {
-	VALVE_DDR |= (1 << VALVE0_12) | (1 << VALVE0_14) |
-		     (1 << VALVE1_12) | (1 << VALVE1_14);
+	__valves_global_switch(v, VALVES_FLOW_OUT);
+	valve_wait_toggle(v);
+	valve0_switch(v, VALVE_STATE_IDLE);
+	valve1_switch(v, VALVE_STATE_IDLE);
 }
 
-void valves_shutdown(void)
+void valves_emergency_state(struct valves *v)
 {
-	__valves_global_switch(VALVES_FLOW_OUT);
-	valve_wait_toggle();
-	valve0_switch(VALVE_STATE_IDLE);
-	valve1_switch(VALVE_STATE_IDLE);
+	valves_ddr_setup(v);
+	__valves_global_switch(v, VALVES_IDLE);
+	valve_wait_toggle(v);
+	valve0_switch(v, VALVE_STATE_IDLE);
+	valve1_switch(v, VALVE_STATE_IDLE);
 }
 
-void valves_emergency_state(void)
+void valves_init(struct valves *v)
 {
-	valves_ddr_setup();
-	__valves_global_switch(VALVES_IDLE);
-	valve_wait_toggle();
-	valve0_switch(VALVE_STATE_IDLE);
-	valve1_switch(VALVE_STATE_IDLE);
-}
-
-void valves_init(void)
-{
-	valves_ddr_setup();
-	__valves_global_switch(VALVES_IDLE);
+	v->current_global_state = 0xFF;
+	valves_ddr_setup(v);
+	__valves_global_switch(v, VALVES_IDLE);
 }
