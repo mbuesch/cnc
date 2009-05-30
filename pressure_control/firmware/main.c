@@ -43,8 +43,8 @@ struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
 
-DEFINE_VALVE(xy_control_valves, D, 6, 7, 4, 5);
-DEFINE_VALVE(z_control_valves, C, 2, 3, 4, 5);
+DEFINE_VALVE(xy_control_valves, VALVES_2MAG, D, 6, 7, 4, 5);
+DEFINE_VALVE(z_control_valves, VALVES_1MAG, C, 2, 3, 4, 5);
 static DEFINE_SENSOR(xy_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(z_control_sensor, (1<<MUX0), 245, 4400, 10000);
 

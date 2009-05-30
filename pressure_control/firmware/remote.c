@@ -200,12 +200,12 @@ static void handle_received_message(void)
 		}
 		if (rx_msg.valve.nr == 0) {
 			valve0_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
-				      VALVE_STATE_12 : VALVE_STATE_14);
+				      VALVE_STATE_CLOSE : VALVE_STATE_OPEN);
 			valve_wait_toggle(&xy_control_valves);
 			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
 		} else if (rx_msg.valve.nr == 1) {
 			valve1_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
-				      VALVE_STATE_12 : VALVE_STATE_14);
+				      VALVE_STATE_CLOSE : VALVE_STATE_OPEN);
 			valve_wait_toggle(&xy_control_valves);
 			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
 		} else

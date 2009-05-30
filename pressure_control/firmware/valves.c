@@ -25,32 +25,50 @@
 #include <avr/io.h>
 
 
-/*** Valve interface definitions ***///XXX
-#define VALVE_DDR		DDRD
-#define VALVE_PORT		PORTD
-#define VALVE0_14		6 /* Pin for valve-0 position 14 */
-#define VALVE0_12		7 /* Pin for valve-0 position 12 */
-#define VALVE1_14		4 /* Pin for valve-1 position 14 */
-#define VALVE1_12		5 /* Pin for valve-1 position 12 */
-
 #define MMIO8(mem_addr)		_MMIO_BYTE(mem_addr)
 
 void valve0_switch(struct valves *v, uint8_t state)
 {
-	MMIO8(v->port) &= ~(BITMASK8(v->bit_0_12) | BITMASK8(v->bit_0_14));
-	if (state == VALVE_STATE_12)
-		MMIO8(v->port) |= BITMASK8(v->bit_0_12);
-	else if (state == VALVE_STATE_14)
-		MMIO8(v->port) |= BITMASK8(v->bit_0_14);
+	uint8_t p = MMIO8(v->port);
+
+	switch (v->type) {
+	case VALVES_1MAG:
+		if (state == VALVE_STATE_OPEN)
+			p |= BITMASK8(v->bit_0_open);
+		else if (state == VALVE_STATE_CLOSE)
+			p &= ~BITMASK8(v->bit_0_open);
+		break;
+	case VALVES_2MAG:
+		p &= ~(BITMASK8(v->bit_0_close) | BITMASK8(v->bit_0_open));
+		if (state == VALVE_STATE_CLOSE)
+			p |= BITMASK8(v->bit_0_close);
+		else if (state == VALVE_STATE_OPEN)
+			p |= BITMASK8(v->bit_0_open);
+		break;
+	}
+	MMIO8(v->port) = p;
 }
 
 void valve1_switch(struct valves *v, uint8_t state)
 {
-	MMIO8(v->port) &= ~(BITMASK8(v->bit_1_12) | BITMASK8(v->bit_1_14));
-	if (state == VALVE_STATE_12)
-		MMIO8(v->port) |= BITMASK8(v->bit_1_12);
-	else if (state == VALVE_STATE_14)
-		MMIO8(v->port) |= BITMASK8(v->bit_1_14);
+	uint8_t p = MMIO8(v->port);
+
+	switch (v->type) {
+	case VALVES_1MAG:
+		if (state == VALVE_STATE_OPEN)
+			p |= BITMASK8(v->bit_1_open);
+		else if (state == VALVE_STATE_CLOSE)
+			p &= ~BITMASK8(v->bit_1_open);
+		break;
+	case VALVES_2MAG:
+		p &= ~(BITMASK8(v->bit_1_close) | BITMASK8(v->bit_1_open));
+		if (state == VALVE_STATE_CLOSE)
+			p |= BITMASK8(v->bit_1_close);
+		else if (state == VALVE_STATE_OPEN)
+			p |= BITMASK8(v->bit_1_open);
+		break;
+	}
+	MMIO8(v->port) = p;
 }
 
 void valves_global_switch(struct valves *v, uint8_t state)
@@ -63,16 +81,16 @@ void __valves_global_switch(struct valves *v, uint8_t state)
 {
 	switch (state) {
 	case VALVES_IDLE:
-		valve0_switch(v, VALVE_STATE_12);
-		valve1_switch(v, VALVE_STATE_12);
+		valve0_switch(v, VALVE_STATE_CLOSE);
+		valve1_switch(v, VALVE_STATE_CLOSE);
 		break;
 	case VALVES_FLOW_IN:
-		valve1_switch(v, VALVE_STATE_12);
-		valve0_switch(v, VALVE_STATE_14);
+		valve1_switch(v, VALVE_STATE_CLOSE);
+		valve0_switch(v, VALVE_STATE_OPEN);
 		break;
 	case VALVES_FLOW_OUT:
-		valve0_switch(v, VALVE_STATE_12);
-		valve1_switch(v, VALVE_STATE_14);
+		valve0_switch(v, VALVE_STATE_CLOSE);
+		valve1_switch(v, VALVE_STATE_OPEN);
 		break;
 	}
 	v->switch_to_idle_time = get_jiffies() + msec_to_jiffies(VALVE_TOGGLE_MSEC);
@@ -92,8 +110,15 @@ void valves_work(struct valves *v)
 
 static inline void valves_ddr_setup(struct valves *v)
 {
-	MMIO8(v->ddr) |= BITMASK8(v->bit_0_12) | BITMASK8(v->bit_0_14) |
-			 BITMASK8(v->bit_1_12) | BITMASK8(v->bit_1_14);
+	switch (v->type) {
+	case VALVES_1MAG:
+		MMIO8(v->ddr) |= BITMASK8(v->bit_0_open) | BITMASK8(v->bit_1_open);
+		break;
+	case VALVES_2MAG:
+		MMIO8(v->ddr) |= BITMASK8(v->bit_0_close) | BITMASK8(v->bit_0_open) |
+				 BITMASK8(v->bit_1_close) | BITMASK8(v->bit_1_open);
+		break;
+	}
 }
 
 void valves_shutdown(struct valves *v)
