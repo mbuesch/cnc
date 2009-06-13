@@ -1,5 +1,5 @@
 EESchema Schematic File Version 1
-LIBS:power,./atmega8-16PI,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves
+LIBS:power,./atmega8-16PI,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves,./pressure_control.cache
 EELAYER 23  0
 EELAYER END
 $Descr A4 11700 8267
@@ -13,6 +13,10 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+Wire Wire Line
+	9950 1050 9950 900 
+Wire Wire Line
+	9100 1450 9100 1600
 Connection ~ 5450 5700
 Wire Wire Line
 	5450 5450 5450 5700
@@ -277,6 +281,64 @@ Wire Wire Line
 	5750 5700 5300 5700
 Wire Wire Line
 	7450 5450 5850 5450
+Wire Wire Line
+	9100 900  9100 1050
+Wire Wire Line
+	9950 1600 9950 1450
+$Comp
+L GND #PWR31
+U 1 1 4A33FE78
+P 9100 1600
+F 0 "#PWR31" H 9100 1600 30  0001 C C
+F 1 "GND" H 9100 1530 30  0001 C C
+	1    9100 1600
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR33
+U 1 1 4A33FE6F
+P 9950 1600
+F 0 "#PWR33" H 9950 1600 30  0001 C C
+F 1 "GND" H 9950 1530 30  0001 C C
+	1    9950 1600
+	1    0    0    -1  
+$EndComp
+$Comp
+L +24V #PWR32
+U 1 1 4A33FE65
+P 9950 900
+F 0 "#PWR32" H 9950 850 20  0001 C C
+F 1 "+24V" H 9950 1000 30  0000 C C
+	1    9950 900 
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR30
+U 1 1 4A33FE52
+P 9100 900
+F 0 "#PWR30" H 9100 990 20  0001 C C
+F 1 "+5V" H 9100 990 30  0000 C C
+	1    9100 900 
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C11
+U 1 1 4A33FE43
+P 9950 1250
+F 0 "C11" H 10000 1350 50  0000 L C
+F 1 "330uF/64V" H 10000 1150 50  0000 L C
+	1    9950 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C10
+U 1 1 4A33FE40
+P 9100 1250
+F 0 "C10" H 9150 1350 50  0000 L C
+F 1 "470uF/16V" H 9150 1150 50  0000 L C
+	1    9100 1250
+	1    0    0    -1  
+$EndComp
 $Comp
 L C C9
 U 1 1 4A339C84
@@ -550,28 +612,28 @@ NoConn ~ 10500 5700
 NoConn ~ 10400 5700
 NoConn ~ 10300 5700
 $Comp
-L GND #PWR32
+L GND #PWR36
 U 1 1 48EC97E3
 P 10700 5550
-F 0 "#PWR32" H 10700 5550 30  0001 C C
+F 0 "#PWR36" H 10700 5550 30  0001 C C
 F 1 "GND" H 10700 5480 30  0001 C C
 	1    10700 5550
 	-1   0    0    1   
 $EndComp
 $Comp
-L GND #PWR30
+L GND #PWR34
 U 1 1 48EC97C8
 P 10300 4600
-F 0 "#PWR30" H 10300 4600 30  0001 C C
+F 0 "#PWR34" H 10300 4600 30  0001 C C
 F 1 "GND" H 10300 4530 30  0001 C C
 	1    10300 4600
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR31
+L +5V #PWR35
 U 1 1 48EC97A6
 P 10500 4000
-F 0 "#PWR31" H 10500 4090 20  0001 C C
+F 0 "#PWR35" H 10500 4090 20  0001 C C
 F 1 "+5V" H 10500 4090 30  0000 C C
 	1    10500 4000
 	-1   0    0    1   

@@ -57,11 +57,6 @@ struct pressure_state {
 	/* True, if the current pressure value needs checking against
 	 * the desired pressure config. */
 	bool needs_checking;
-	/* Trigger count:
-	 * >0 = waiting
-	 * 0  = trigger now
-	 * -1 = triggered and running. */
-	int8_t sensor_trigger_cnt;
 };
 
 void get_pressure_config(struct pressure_config *xy,
