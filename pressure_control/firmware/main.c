@@ -33,18 +33,20 @@
 
 
 struct eeprom_data {
-	struct pressure_config cfg;
+	struct pressure_config cfg_xy;
+	struct pressure_config cfg_z;
 };
 
 /* The pressure configuration data. */
-struct pressure_config cfg;
+struct pressure_config cfg_xy;
+struct pressure_config cfg_z;
 /* The pressure state data. */
 struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
 
 DEFINE_VALVE(xy_control_valves, VALVES_2MAG, D, 6, 7, 4, 5);
-DEFINE_VALVE(z_control_valves, VALVES_1MAG, C, 2, 3, 4, 5);
+DEFINE_VALVE(z_control_valves, VALVES_1MAG, C, 2, -1, 3, -1);
 static DEFINE_SENSOR(xy_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(z_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
@@ -53,9 +55,14 @@ static uint8_t sensor_cycle;
 
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
-	.cfg = {
+	.cfg_xy = {
 		.desired		= 2500,	/* Millibar */
-		.hysteresis		= 200,	/* Millibar */
+		.hysteresis		= 150,	/* Millibar */
+		.autoadjust_enable	= 1,
+	},
+	.cfg_z = {
+		.desired		= 1500,	/* Millibar */
+		.hysteresis		= 150,	/* Millibar */
 		.autoadjust_enable	= 1,
 	},
 };
@@ -65,7 +72,8 @@ static struct eeprom_data EEMEM eeprom = {
 static void eeprom_load_config(void)
 {
 	eeprom_busy_wait();
-	eeprom_read_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_read_block(&cfg_xy, &eeprom.cfg_xy, sizeof(cfg_xy));
+	eeprom_read_block(&cfg_z, &eeprom.cfg_z, sizeof(cfg_z));
 	eeprom_busy_wait();
 }
 
@@ -73,25 +81,30 @@ static void eeprom_load_config(void)
 static void eeprom_store_config(void)
 {
 	eeprom_busy_wait();
-	eeprom_write_block(&cfg, &eeprom.cfg, sizeof(cfg));
+	eeprom_write_block(&cfg_xy, &eeprom.cfg_xy, sizeof(cfg_xy));
+	eeprom_write_block(&cfg_z, &eeprom.cfg_z, sizeof(cfg_z));
 	eeprom_busy_wait();
 }
 
-void get_pressure_config(struct pressure_config *ret)
+void get_pressure_config(struct pressure_config *xy,
+			 struct pressure_config *z)
 {
 	uint8_t sreg;
 
 	sreg = irq_disable_save();
-	memcpy(ret, &cfg, sizeof(*ret));
+	memcpy(xy, &cfg_xy, sizeof(*xy));
+	memcpy(z, &cfg_z, sizeof(*z));
 	irq_restore(sreg);
 }
 
-void set_pressure_config(struct pressure_config *new_cfg)
+void set_pressure_config(struct pressure_config *new_xy,
+			 struct pressure_config *new_z)
 {
 	uint8_t sreg;
 
 	sreg = irq_disable_save();
-	memcpy(&cfg, new_cfg, sizeof(cfg));
+	memcpy(&cfg_xy, new_xy, sizeof(cfg_xy));
+	memcpy(&cfg_z, new_z, sizeof(cfg_z));
 	eeprom_store_config();
 	irq_restore(sreg);
 }
@@ -143,7 +156,10 @@ void system_timer_init(void)
 
 /* Check the current pressure value against the desired value and
  * adjust the pressure if needed. */
-static void do_check_pressure(struct valves *valves, uint16_t mbar)
+static void do_check_pressure(struct valves *valves,
+			      struct pressure_config *cfg,
+			      uint16_t mbar,
+			      uint16_t *reported_mbar)
 {
 	int32_t offset;
 	uint16_t abs_offset;
@@ -151,20 +167,20 @@ static void do_check_pressure(struct valves *valves, uint16_t mbar)
 	bool report_change = 0;
 	uint8_t cur_state;
 
-	if (cfg.autoadjust_enable) {
-		offset = (int32_t)mbar - (int32_t)cfg.desired;
+	if (cfg->autoadjust_enable) {
+		offset = (int32_t)mbar - (int32_t)cfg->desired;
 		abs_offset = abs(offset);
 		is_too_big = (offset >= 0);
 		cur_state = valves_get_global_state(valves);
 
-		if (abs_offset > cfg.hysteresis) {
+		if (abs_offset > cfg->hysteresis) {
 			/* Adjust the pressure */
 			report_change = (cur_state == VALVES_IDLE);
 			if (is_too_big)
 				valves_global_switch(valves, VALVES_FLOW_OUT);
 			else
 				valves_global_switch(valves, VALVES_FLOW_IN);
-		} else if (abs_offset > cfg.hysteresis / 4) {
+		} else if (abs_offset > cfg->hysteresis / 4) {
 			/* If we're idle, stay idle.
 			 * If we're increasing or decreasing pressure,
 			 * keep on doing this to reach the desired center value
@@ -186,11 +202,12 @@ static void do_check_pressure(struct valves *valves, uint16_t mbar)
 			valves_disarm_auto_idle(valves);
 		}
 	}
-	if (abs((int32_t)mbar - (int32_t)state.reported_mbar) >= 100)
+	if (abs((int32_t)mbar - (int32_t)(*reported_mbar)) >= 100)
 		report_change = 1;
 	if (report_change) {
-		remote_pressure_change_notification(mbar);
-		state.reported_mbar = mbar;
+		remote_pressure_change_notification(state.measured_mbar_xy,
+						    state.measured_mbar_z);
+		*reported_mbar = mbar;
 	}
 }
 
@@ -198,10 +215,20 @@ static void check_pressure(void)
 {
 	switch (sensor_cycle) {
 	case SENSOR_CYCLE_XY:
-		do_check_pressure(&xy_control_valves, state.measured_mbar);
+		state.measured_mbar_xy = state.measured_mbar;
+		if (state.device_enabled) {
+			do_check_pressure(&xy_control_valves, &cfg_xy,
+					  state.measured_mbar_xy,
+					  &state.reported_mbar_xy);
+		}
 		break;
 	case SENSOR_CYCLE_Z:
-		do_check_pressure(&z_control_valves, state.measured_mbar);
+		state.measured_mbar_z = state.measured_mbar;
+		if (state.device_enabled) {
+			do_check_pressure(&z_control_valves, &cfg_z,
+					  state.measured_mbar_z,
+					  &state.reported_mbar_z);
+		}
 		break;
 	default:
 		BUG_ON(1);
@@ -281,8 +308,7 @@ int main(void)
 		mb();
 		now = get_jiffies();
 		if (state.needs_checking) {
-			if (state.device_enabled)
-				check_pressure();
+			check_pressure();
 			/* Trigger another measurement in
 			 * a few milliseconds. */
 			if (++sensor_cycle == __NR_SENSOR_CYCLE)

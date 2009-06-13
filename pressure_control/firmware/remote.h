@@ -57,13 +57,22 @@ struct remote_message {
 			char str[8];
 		} __attribute__((packed)) logmessage;
 		struct {
-			uint16_t mbar;
+			uint16_t mbar[2];
 		} __attribute__((packed)) pressure;
 		struct {
-			uint32_t flags;
+			uint8_t island;	/* Valve island */
+			uint16_t mbar;
+		} __attribute__((packed)) setpressure;
+		struct {
+			uint32_t flags[2];
 		} __attribute__((packed)) config;
 		struct {
-			uint8_t nr; /* Valve ID */
+			uint8_t island;	/* Valve island */
+			uint32_t flags;
+		} __attribute__((packed)) setconfig;
+		struct {
+			uint8_t island;	/* Valve island */
+			uint8_t nr;	/* Valve ID in the island */
 			uint8_t state;
 		} __attribute__((packed)) valve;
 
@@ -81,7 +90,7 @@ void print_dec(uint16_t number);
 void print_dec_signed(int16_t number);
 void print_hex(uint8_t number);
 
-void remote_pressure_change_notification(uint16_t mbar);
+void remote_pressure_change_notification(uint16_t xy_mbar, uint16_t z_mbar);
 void remote_notify_restart(void);
 
 void remote_work(void);

@@ -29,8 +29,8 @@
 #include <avr/io.h>
 
 
-#define BAUDRATE	38400 /* Error = 0.2% */
-#define USE_2X		0
+#define BAUDRATE	115200
+#define USE_2X		1
 
 
 static struct remote_message rx_msg;
@@ -119,95 +119,123 @@ static void handle_received_message(void)
 	case MSG_GET_CURRENT_PRESSURE: {
 		struct pressure_state state;
 
-//FIXME
 		get_pressure_state(&state);
 		reply.id = MSG_CURRENT_PRESSURE;
-		reply.pressure.mbar = state.measured_mbar;
+		reply.pressure.mbar[0] = state.measured_mbar_xy;
+		reply.pressure.mbar[1] = state.measured_mbar_z;
 		send_message(&reply);
 		break;
 	}
 	case MSG_GET_DESIRED_PRESSURE: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 
-		get_pressure_config(&conf);
+		get_pressure_config(&xy, &z);
 		reply.id = MSG_DESIRED_PRESSURE;
-		reply.pressure.mbar = conf.desired;
+		reply.pressure.mbar[0] = xy.desired;
+		reply.pressure.mbar[1] = z.desired;
 		send_message(&reply);
 		break;
 	}
 	case MSG_GET_HYSTERESIS: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 
-		get_pressure_config(&conf);
+		get_pressure_config(&xy, &z);
 		reply.id = MSG_HYSTERESIS;
-		reply.pressure.mbar = conf.hysteresis;
+		reply.pressure.mbar[0] = xy.hysteresis;
+		reply.pressure.mbar[1] = z.hysteresis;
 		send_message(&reply);
 		break;
 	}
 	case MSG_GET_CONFIG_FLAGS: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 
-		get_pressure_config(&conf);
+		get_pressure_config(&xy, &z);
 		reply.id = MSG_CONFIG_FLAGS;
-		if (conf.autoadjust_enable)
-			reply.config.flags |= (1 << CFG_FLAG_AUTOADJUST_ENABLE);
+		if (xy.autoadjust_enable)
+			reply.config.flags[0] |= (1 << CFG_FLAG_AUTOADJUST_ENABLE);
+		if (z.autoadjust_enable)
+			reply.config.flags[1] |= (1 << CFG_FLAG_AUTOADJUST_ENABLE);
 		send_message(&reply);
 		break;
 	}
 	case MSG_SET_DESIRED_PRESSURE: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 
 		cli();
-		get_pressure_config(&conf);
-		conf.desired = rx_msg.pressure.mbar;
-		set_pressure_config(&conf);
+		get_pressure_config(&xy, &z);
+		if (rx_msg.setpressure.island == 0)
+			xy.desired = rx_msg.setpressure.mbar;
+		else if (rx_msg.setpressure.island == 1)
+			z.desired = rx_msg.setpressure.mbar;
+		set_pressure_config(&xy, &z);
 		sei();
 		break;
 	}
 	case MSG_SET_HYSTERESIS: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 
 		cli();
-		get_pressure_config(&conf);
-		conf.hysteresis = rx_msg.pressure.mbar;
-		set_pressure_config(&conf);
+		get_pressure_config(&xy, &z);
+		if (rx_msg.setpressure.island == 0)
+			xy.hysteresis = rx_msg.setpressure.mbar;
+		else if (rx_msg.setpressure.island == 1)
+			z.hysteresis = rx_msg.setpressure.mbar;
+		set_pressure_config(&xy, &z);
 		sei();
 		break;
 	}
 	case MSG_SET_CONFIG_FLAGS: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
 		bool flag;
 
 		cli();
-		get_pressure_config(&conf);
-		flag = !!(rx_msg.config.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
-		if (conf.autoadjust_enable != flag) {
-			conf.autoadjust_enable = flag;
-			/* Make sure the values are idle. */
-			valves_global_switch(&xy_control_valves, VALVES_IDLE);
+		get_pressure_config(&xy, &z);
+		flag = !!(rx_msg.setconfig.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
+		if (rx_msg.setconfig.island == 0) {
+			if (xy.autoadjust_enable != flag) {
+				xy.autoadjust_enable = flag;
+				/* Make sure the values are idle. */
+				valves_global_switch(&xy_control_valves, VALVES_IDLE);
+			}
+		} else if (rx_msg.setconfig.island == 1) {
+			if (z.autoadjust_enable != flag) {
+				z.autoadjust_enable = flag;
+				/* Make sure the values are idle. */
+				valves_global_switch(&z_control_valves, VALVES_IDLE);
+			}
 		}
-		set_pressure_config(&conf);
+		set_pressure_config(&xy, &z);
 		sei();
 		break;
 	}
 	case MSG_SET_VALVE: {
-		struct pressure_config conf;
+		struct pressure_config xy, z;
+		struct valves *v;
 
-		get_pressure_config(&conf);
-		if (conf.autoadjust_enable) {
-			err = MSG_ERR_BUSY;
-			break;
+		get_pressure_config(&xy, &z);
+		if (rx_msg.valve.island == 0) {
+			if (xy.autoadjust_enable) {
+				err = MSG_ERR_BUSY;
+				break;
+			}
+			v = &xy_control_valves;
+		} else {
+			if (z.autoadjust_enable) {
+				err = MSG_ERR_BUSY;
+				break;
+			}
+			v = &z_control_valves;
 		}
 		if (rx_msg.valve.nr == 0) {
-			valve0_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
+			valve0_switch(v, rx_msg.valve.state == 0 ?
 				      VALVE_STATE_CLOSE : VALVE_STATE_OPEN);
-			valve_wait_toggle(&xy_control_valves);
-			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
+			valve_wait_toggle(v);
+			valve0_switch(v, VALVE_STATE_IDLE);
 		} else if (rx_msg.valve.nr == 1) {
-			valve1_switch(&xy_control_valves, rx_msg.valve.state == 0 ?
+			valve1_switch(v, rx_msg.valve.state == 0 ?
 				      VALVE_STATE_CLOSE : VALVE_STATE_OPEN);
-			valve_wait_toggle(&xy_control_valves);
-			valve0_switch(&xy_control_valves, VALVE_STATE_IDLE);
+			valve_wait_toggle(v);
+			valve0_switch(v, VALVE_STATE_IDLE);
 		} else
 			err = MSG_ERR_INVAL;
 		break;
@@ -215,6 +243,7 @@ static void handle_received_message(void)
 	case MSG_SHUTDOWN:
 		prepare_shutdown();
 		valves_shutdown(&xy_control_valves);
+		valves_shutdown(&z_control_valves);
 		break;
 	case MSG_TURNON:
 		prepare_turn_on();
@@ -383,13 +412,14 @@ void remote_work(void)
 	sei();
 }
 
-void remote_pressure_change_notification(uint16_t mbar)
+void remote_pressure_change_notification(uint16_t xy_mbar, uint16_t z_mbar)
 {
 	struct remote_message msg;
 
 	memset(&msg, 0, sizeof(msg));
 	msg.id = MSG_CURRENT_PRESSURE;
-	msg.pressure.mbar = mbar;
+	msg.pressure.mbar[0] = xy_mbar;
+	msg.pressure.mbar[1] = z_mbar;
 	send_message(&msg);
 }
 
@@ -418,8 +448,8 @@ static void usart_init(void)
 #if USE_2X
 	UCSRA = (1 << U2X);
 #endif
-	/* 8 Data bits, 1 Stop bit, No parity */
-	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1);
+	/* 8 Data bits, 2 Stop bits, No parity */
+	UCSRC = (1 << URSEL) | (1 << UCSZ0) | (1 << UCSZ1) | (1 << USBS);
 	/* Enable transceiver and RX IRQs */
 	UCSRB = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
 	/* Drain the RX buffer */

@@ -29,10 +29,10 @@ from PyQt4.QtGui import *
 
 
 # Serial communication port configuration
-CONFIG_BAUDRATE			= 38400
+CONFIG_BAUDRATE			= 115200
 CONFIG_BYTESIZE			= 8
 CONFIG_PARITY			= PARITY_NONE
-CONFIG_STOPBITS			= 1
+CONFIG_STOPBITS			= 2
 
 # The size of one message
 MSG_SIZE			= 12
@@ -74,7 +74,7 @@ CFG_FLAG_AUTOADJUST_ENABLE	= 0
 def usage():
 	print "Pressure control - remote configuration"
 	print ""
-	print "Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>"
+	print "Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>"
 	print "Licensed under the GNU/GPL version 3"
 	print ""
 	print "Usage: pctl-remote [OPTIONS] /dev/ttyS0"
@@ -184,10 +184,7 @@ class RemoteProtocol(QObject):
 		# Add the payload
 		msg += payload
 		# Pad the payload up to the constant size
-		i = MSG_PAYLOAD_SIZE - len(payload)
-		while i:
-			msg += '\0'
-			i -= 1
+		msg += '\0' * (MSG_PAYLOAD_SIZE - len(payload))
 		# Calculate the CRC
 		crc = self.__crc16_update_buffer(0xFFFF, msg)
 		crc ^= 0xFFFF
@@ -235,18 +232,20 @@ class RemoteProtocol(QObject):
 		if not reply:
 			return None
 		reply = remote.getPayload(reply)
-		flags = ord(reply[0]) | (ord(reply[1]) << 8) | \
+		xy = ord(reply[0]) | (ord(reply[1]) << 8) | \
 			(ord(reply[2]) << 16) | (ord(reply[3]) << 24)
-		return flags
+		z = ord(reply[4]) | (ord(reply[5]) << 8) | \
+			(ord(reply[6]) << 16) | (ord(reply[7]) << 24)
+		return (xy, z)
 
-	def configFlagsSet(self, flags):
-		data = "%c%c%c%c" % ((flags & 0xFF), ((flags >> 8) & 0xFF),
+	def configFlagsSet(self, island, flags):
+		data = "%c%c%c%c%c" % (island, (flags & 0xFF), ((flags >> 8) & 0xFF),
 				     ((flags >> 16) & 0xFF), ((flags >> 24) & 0xFF))
 		err = self.sendMessageSyncError(MSG_SET_CONFIG_FLAGS, 0, data)
 		return err
 
-	def setValve(self, valveNr, state):
-		data = "%c%c" % (valveNr, (state != 0))
+	def setValve(self, islandId, valveNr, state):
+		data = "%c%c%c" % (islandId, valveNr, (state != 0))
 		i = 5 # Retry a few times
 		while i != 0:
 			err = self.sendMessageSyncError(MSG_SET_VALVE, 0, data)
@@ -295,41 +294,65 @@ class LogBrowser(QTextEdit):
 		self.addText("Info: ")
 		self.addText(text)
 
-class MainWidget(QWidget):
-	def __init__(self, parent=None):
+class PressureGauge(QWidget):
+	def __init__(self, name, min, max, units, parent):
 		QWidget.__init__(self, parent)
-		self.initialized = False
+		self.min = min
+		self.max = max
+		self.units = units
 
-		layout = QVBoxLayout()
+		self.setLayout(QVBoxLayout())
+
+		self.title = QLabel(name, self)
+		self.title.setAlignment(Qt.AlignHCenter)
+		self.layout().addWidget(self.title)
+
+		self.dial = QDial(self)
+		self.dial.setNotchesVisible(1)
+		self.dial.setEnabled(0)
+		self.dial.setSingleStep(100)
+		self.dial.setPageStep(1000)
+		self.dial.setNotchTarget(2)
+		self.dial.setMinimum(int(min * 1000))
+		self.dial.setMaximum(int(max * 1000))
+		self.dial.setFixedSize(100, 100)
+		self.layout().addWidget(self.dial)
+
+		self.num = QLabel(self)
+		self.num.setAlignment(Qt.AlignHCenter)
+		self.layout().addWidget(self.num)
+
+		self.layout().addStretch()
+		self.setValue(0)
+
+	def setValue(self, value):
+		if (value < self.min):
+			value = self.min
+		if (value > self.max):
+			value = self.max
+		self.num.setText("%.2f %s" % (float(value), self.units))
+		self.dial.setValue(int(value * 1000))
+
+class ValveIslandWidget(QGroupBox):
+	def __init__(self, name, islandId, parent):
+		QGroupBox.__init__(self, name, parent)
+		self.islandId = islandId
+
+		self.setLayout(QGridLayout())
+
+		self.gauge = PressureGauge("Current pressure", 0, 10, "Bar", self)
+		self.layout().addWidget(self.gauge, 0, 0, 3, 1)
 
 		h = QHBoxLayout()
-		label = QLabel(self.tr("Current pressure:"), self)
-		h.addWidget(label)
-		self.curPressure = QLCDNumber(self)
-		self.curPressure.setSegmentStyle(QLCDNumber.Flat)
-		self.curPressure.setNumDigits(4)
-		self.curPressure.display(QString("0.00"))
-		h.addWidget(self.curPressure)
-		label = QLabel(self.tr("Bar"), self)
-		h.addWidget(label)
 		h.addStretch()
-		layout.addLayout(h)
+		self.autoCheckbox = QCheckBox(self.tr("Automatically adjust pressure"), self)
+		self.connect(self.autoCheckbox, SIGNAL("stateChanged(int)"),
+			     self.autoadjustChanged)
+		h.addWidget(self.autoCheckbox)
+		self.layout().addLayout(h, 0, 1)
 
 		h = QHBoxLayout()
-		label = QLabel(self.tr("Hysteresis:"), self)
-		h.addWidget(label)
-		self.hystSpin = QDoubleSpinBox(self)
-		self.hystSpin.setMinimum(0.1)
-		self.hystSpin.setMaximum(8)
-		self.hystSpin.setSingleStep(0.05)
-		self.hystSpin.setSuffix(self.tr(" Bar"))
-		self.connect(self.hystSpin, SIGNAL("valueChanged(double)"),
-			     self.desiredHysteresisChanged)
-		h.addWidget(self.hystSpin)
 		h.addStretch()
-		layout.addLayout(h)
-
-		h = QHBoxLayout()
 		label = QLabel(self.tr("Desired pressure:"), self)
 		h.addWidget(label)
 		self.pressureSpin = QDoubleSpinBox(self)
@@ -340,12 +363,21 @@ class MainWidget(QWidget):
 		self.connect(self.pressureSpin, SIGNAL("valueChanged(double)"),
 			     self.desiredPressureChanged)
 		h.addWidget(self.pressureSpin)
-		self.autoCheckbox = QCheckBox(self.tr("Automatically adjust pressure"), self)
-		self.connect(self.autoCheckbox, SIGNAL("stateChanged(int)"),
-			     self.autoadjustChanged)
-		h.addWidget(self.autoCheckbox)
+		self.layout().addLayout(h, 1, 1)
+
+		h = QHBoxLayout()
 		h.addStretch()
-		layout.addLayout(h)
+		label = QLabel(self.tr("Hysteresis:"), self)
+		h.addWidget(label)
+		self.hystSpin = QDoubleSpinBox(self)
+		self.hystSpin.setMinimum(0.1)
+		self.hystSpin.setMaximum(8)
+		self.hystSpin.setSingleStep(0.05)
+		self.hystSpin.setSuffix(self.tr(" Bar"))
+		self.connect(self.hystSpin, SIGNAL("valueChanged(double)"),
+			     self.desiredHysteresisChanged)
+		h.addWidget(self.hystSpin)
+		self.layout().addLayout(h, 2, 1)
 
 		h = QHBoxLayout()
 		self.inButton = QPushButton(self.tr("IN-Valve"), self)
@@ -360,13 +392,80 @@ class MainWidget(QWidget):
 			     self.outValvePressed)
 		self.connect(self.outButton, SIGNAL("released()"),
 			     self.outValveReleased)
-		layout.addLayout(h)
-
-		self.log = LogBrowser(self)
-		layout.addWidget(self.log)
+		self.layout().addLayout(h, 3, 0, 1, 2)
 
 		self.autoadjustChanged(Qt.Unchecked)
-		self.setLayout(layout)
+
+	def desiredPressureChanged(self, value):
+		if not self.parent().initialized:
+			return
+		mbar = int(value * 1000)
+		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
+		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to change pressure. Error=%u\n" % err))
+
+	def desiredHysteresisChanged(self, value):
+		if not self.parent().initialized:
+			return
+		mbar = int(value * 1000)
+		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
+		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to change hysteresis. Error=%u\n" % err))
+
+	def autoadjustChanged(self, state):
+		self.inButton.setEnabled(state == Qt.Unchecked)
+		self.outButton.setEnabled(state == Qt.Unchecked)
+		if not self.parent().initialized:
+			return
+		flags = remote.configFlagsFetch()
+		if flags == None:
+			self.parent().log.hostLog(self.tr("Failed to fetch config flags\n"))
+			return
+		flags = flags[self.islandId]
+		if state == Qt.Checked:
+			flags |= (1 << CFG_FLAG_AUTOADJUST_ENABLE)
+		else:
+			flags &= ~(1 << CFG_FLAG_AUTOADJUST_ENABLE)
+		err = remote.configFlagsSet(self.islandId, flags)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to set config flags\n"))
+
+	def inValvePressed(self):
+		err = remote.setValve(self.islandId, 0, 1)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to switch valve 0 ON\n"))
+
+	def inValveReleased(self):
+		err = remote.setValve(self.islandId, 0, 0)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to switch valve 0 OFF\n"))
+
+	def outValvePressed(self):
+		err = remote.setValve(self.islandId, 1, 1)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to switch valve 1 ON\n"))
+
+	def outValveReleased(self):
+		err = remote.setValve(self.islandId, 1, 0)
+		if err != MSG_ERR_NONE:
+			self.parent().log.hostLog(self.tr("Failed to switch valve 1 OFF\n"))
+
+class MainWidget(QWidget):
+	def __init__(self, parent=None):
+		QWidget.__init__(self, parent)
+		self.initialized = False
+
+		self.setLayout(QVBoxLayout())
+
+		self.xy = ValveIslandWidget("X/Y joints", 0, self)
+		self.layout().addWidget(self.xy)
+		self.z = ValveIslandWidget("Z joint", 1, self)
+		self.layout().addWidget(self.z)
+
+		self.log = LogBrowser(self)
+		self.layout().addWidget(self.log)
 
 	def initializeState(self):
 		if not opt_nofetch:
@@ -408,8 +507,10 @@ class MainWidget(QWidget):
 			print "Failed to fetch desired pressure. No reply."
 			return False
 		reply = remote.getPayload(reply)
-		mbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		self.pressureSpin.setValue(float(mbar) / 1000)
+		xy_mbar = ord(reply[0]) | (ord(reply[1]) << 8)
+		z_mbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		self.xy.pressureSpin.setValue(float(xy_mbar) / 1000)
+		self.z.pressureSpin.setValue(float(z_mbar) / 1000)
 
 		# Get the hysteresis
 		reply = remote.sendMessageSyncReply(MSG_GET_HYSTERESIS, 0, "",
@@ -418,78 +519,29 @@ class MainWidget(QWidget):
 			print "Failed to fetch hysteresis. No reply."
 			return False
 		reply = remote.getPayload(reply)
-		mbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		self.hystSpin.setValue(float(mbar) / 1000)
+		xy_mbar = ord(reply[0]) | (ord(reply[1]) << 8)
+		z_mbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		self.xy.hystSpin.setValue(float(xy_mbar) / 1000)
+		self.z.hystSpin.setValue(float(z_mbar) / 1000)
 
 		# Get the config flags
 		flags = remote.configFlagsFetch()
 		if flags == None:
 			print "Failed to fetch config flags. No reply."
 			return False
-		if flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
-			self.autoCheckbox.setCheckState(Qt.Checked)
+		if flags[0] & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
+			self.xy.autoCheckbox.setCheckState(Qt.Checked)
+		if flags[1] & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
+			self.z.autoCheckbox.setCheckState(Qt.Checked)
 
 		return True
 
 	def parseCurrentPressureMsg(self, msg):
 		msg = remote.getPayload(msg)
-		mbar = ord(msg[0]) | (ord(msg[1]) << 8)
-		self.curPressure.display(QString("%.2f" % (float(mbar) / 1000)))
-
-	def desiredPressureChanged(self, value):
-		if not self.initialized:
-			return
-		mbar = int(value * 1000)
-		data = "%c%c" % ((mbar & 0xFF), ((mbar >> 8) & 0xFF))
-		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to change pressure. Error=%u\n" % err))
-
-	def desiredHysteresisChanged(self, value):
-		if not self.initialized:
-			return
-		mbar = int(value * 1000)
-		data = "%c%c" % ((mbar & 0xFF), ((mbar >> 8) & 0xFF))
-		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to change hysteresis. Error=%u\n" % err))
-
-	def autoadjustChanged(self, state):
-		self.inButton.setEnabled(state == Qt.Unchecked)
-		self.outButton.setEnabled(state == Qt.Unchecked)
-		if not self.initialized:
-			return
-		flags = remote.configFlagsFetch()
-		if flags == None:
-			self.log.hostLog(self.tr("Failed to fetch config flags\n"))
-			return
-		if state == Qt.Checked:
-			flags |= (1 << CFG_FLAG_AUTOADJUST_ENABLE)
-		else:
-			flags &= ~(1 << CFG_FLAG_AUTOADJUST_ENABLE)
-		err = remote.configFlagsSet(flags)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to set config flags\n"))
-
-	def inValvePressed(self):
-		err = remote.setValve(0, 1)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to switch valve 0 ON\n"))
-
-	def inValveReleased(self):
-		err = remote.setValve(0, 0)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to switch valve 0 OFF\n"))
-
-	def outValvePressed(self):
-		err = remote.setValve(1, 1)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to switch valve 1 ON\n"))
-
-	def outValveReleased(self):
-		err = remote.setValve(1, 0)
-		if err != MSG_ERR_NONE:
-			self.log.hostLog(self.tr("Failed to switch valve 1 OFF\n"))
+		xy_mbar = ord(msg[0]) | (ord(msg[1]) << 8)
+		z_mbar = ord(msg[2]) | (ord(msg[3]) << 8)
+		self.xy.gauge.setValue(float(xy_mbar) / 1000)
+		self.z.gauge.setValue(float(z_mbar) / 1000)
 
 class MainWindow(QMainWindow):
 	def __init__(self, parent=None):
@@ -519,7 +571,7 @@ class MainWindow(QMainWindow):
 	def about(self):
 		QMessageBox.information(self, self.tr("About"),
 					self.tr("Pneumatic pressure control\n"
-						"Copyright (c) 2008 Michael Buesch"))
+						"Copyright (c) 2008-2009 Michael Buesch"))
 
 def main():
 	global remote
