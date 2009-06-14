@@ -45,10 +45,10 @@ struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
 
-DEFINE_VALVE(xy_control_valves, VALVES_2MAG, D, 6, 7, 4, 5);
-DEFINE_VALVE(z_control_valves, VALVES_1MAG, C, 2, -1, 3, -1);
-static DEFINE_SENSOR(xy_control_sensor, 0, 245, 4400, 10000);
-static DEFINE_SENSOR(z_control_sensor, (1<<MUX0), 245, 4400, 10000);
+DEFINE_VALVE(z_control_valves, VALVES_2MAG, D, 6, 7, 4, 5);
+DEFINE_VALVE(xy_control_valves, VALVES_1MAG, C, 2, -1, 3, -1);
+static DEFINE_SENSOR(z_control_sensor, 0, 245, 4400, 10000);
+static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
 static uint8_t sensor_cycle;
 
@@ -56,13 +56,13 @@ static uint8_t sensor_cycle;
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
 	.cfg_xy = {
-		.desired		= 2500,	/* Millibar */
-		.hysteresis		= 150,	/* Millibar */
+		.desired		= 2700,	/* Millibar */
+		.hysteresis		= 100,	/* Millibar */
 		.autoadjust_enable	= 1,
 	},
 	.cfg_z = {
 		.desired		= 1500,	/* Millibar */
-		.hysteresis		= 150,	/* Millibar */
+		.hysteresis		= 100,	/* Millibar */
 		.autoadjust_enable	= 1,
 	},
 };
@@ -202,7 +202,7 @@ static void do_check_pressure(struct valves *valves,
 			valves_disarm_auto_idle(valves);
 		}
 	}
-	if (abs((int32_t)mbar - (int32_t)(*reported_mbar)) >= 100)
+	if (abs((int32_t)mbar - (int32_t)(*reported_mbar)) >= 40)
 		report_change = 1;
 	if (report_change) {
 		remote_pressure_change_notification(state.measured_mbar_xy,
