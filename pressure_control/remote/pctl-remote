@@ -356,7 +356,7 @@ class ValveIslandWidget(QGroupBox):
 		label = QLabel(self.tr("Desired pressure:"), self)
 		h.addWidget(label)
 		self.pressureSpin = QDoubleSpinBox(self)
-		self.pressureSpin.setMinimum(1)
+		self.pressureSpin.setMinimum(0.5)
 		self.pressureSpin.setMaximum(8)
 		self.pressureSpin.setSingleStep(0.1)
 		self.pressureSpin.setSuffix(self.tr(" Bar"))

@@ -38,17 +38,20 @@ struct valves {
 	uint8_t current_global_state;	/* enum valves_global_state */
 	bool need_switch_to_idle;	/* Need transition to VALVE_STATE_IDLE. */
 	jiffies_t switch_to_idle_time;	/* Deadline for VALVE_STATE_IDLE transition. */
+
+	uint16_t state_force_threshold;	/* Threshold for forcing the valve state */
 };
 
-#define DEFINE_VALVE(name, _type, portid, bit0_open, bit0_close, bit1_open, bit1_close)	\
+#define DEFINE_VALVE(name, _type, portid, bit0_open, bit0_close, bit1_open, bit1_close, force_thres) \
 	struct valves name = {						\
-		.type		= _type,				\
-		.ddr		= _SFR_ADDR(DDR##portid),		\
-		.port		= _SFR_ADDR(PORT##portid),		\
-		.bit_0_open	= bit0_open,				\
-		.bit_0_close	= bit0_close,				\
-		.bit_1_open	= bit1_open,				\
-		.bit_1_close	= bit1_close,				\
+		.type			= _type,			\
+		.ddr			= _SFR_ADDR(DDR##portid),	\
+		.port			= _SFR_ADDR(PORT##portid),	\
+		.bit_0_open		= bit0_open,			\
+		.bit_0_close		= bit0_close,			\
+		.bit_1_open		= bit1_open,			\
+		.bit_1_close		= bit1_close,			\
+		.state_force_threshold	= force_thres,			\
 	}
 
 #define VALVE_TOGGLE_MSEC	10
