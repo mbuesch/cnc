@@ -17,14 +17,14 @@
 .include "m8def.inc"
 
 
-.def zero		= r1	; Always zero'd
-.def rFF		= r2	; Always 0xFF
-.def sigin		= r3	; Input signal
+.def zero		= r0	; Always zero'd
+.def one		= r1	; Always one
+.def two		= r2	; Always two
+.def three		= r3	; Always three
+.def sigin		= r4	; Input signal
 .def t0			= r16	; Temp reg 0
 .def t1			= r17	; Temp reg 1
 .def t2			= r18	; Temp reg 2
-.def t3			= r19	; Temp reg 3
-.def t4			= r20	; Temp reg 4
 .def steptabstart	= r23	; Step table start marker
 .def steptabend		= r24	; Step table end marker
 .def dirswap		= r25	; Polarity swapper
@@ -44,20 +44,26 @@
 
 .dseg
 
-MEM_STEPTABLE_LMD1:	.byte 60
-MEM_STEPTABLE_LMD2:	.byte 60
+; We need this at the start of RAM, so it is
+; addressable with 8bit pointers.
+MEM_STEPTABLE:		.byte (30 * 2 * 2)
 
 
 .cseg
 .org 0x000
 	rjmp reset
 
+.org 0x026
 reset:
 	cli
 
 	clr zero
-	clr rFF
-	com rFF
+	clr one
+	inc one
+	mov two, one
+	inc two
+	mov three, two
+	inc three
 
 	; Init the stackpointer
 	ldi t0, low(RAMEND)
@@ -81,34 +87,22 @@ reset:
 	ldi t0, 0x00
 	out PORTD, t0
 
-	; Copy the step tables to RAM
-	ldi t0, (NR_STEPS * 2)
-	ldi ZL, low(steptable_lmd1 * 2)
-	ldi ZH, high(steptable_lmd1 * 2)
-	ldi XL, low(MEM_STEPTABLE_LMD1)
+	; Copy the step table to RAM
+	ldi t0, (NR_STEPS * 2 * 2)
+	ldi ZL, low(steptable * 2)
+	ldi ZH, high(steptable * 2)
+	ldi XL, low(MEM_STEPTABLE)
 	clr XH
- copy1:	lpm t1, Z+
+ copy:	lpm t1, Z+
 	st X+, t1
 	dec t0
-	brne copy1
-
-	ldi t0, (NR_STEPS * 2)
-	ldi ZL, low(steptable_lmd2 * 2)
-	ldi ZH, high(steptable_lmd2 * 2)
-	ldi YL, low(MEM_STEPTABLE_LMD2)
-	clr YH
- copy2:	lpm t1, Z+
-	st Y+, t1
-	dec t0
-	brne copy2
+	brne copy
 
 	; Init the status registers
-	ldi XL, low(MEM_STEPTABLE_LMD1)		; X is the LMD1 step pointer
+	ldi XL, low(MEM_STEPTABLE)		; X is the table pointer
 	clr XH
-	ldi YL, low(MEM_STEPTABLE_LMD2)		; Y is the LMD2 step pointer
-	clr YH
-	ldi steptabend, (low(MEM_STEPTABLE_LMD1) + (NR_STEPS * 2))
-	ldi steptabstart, (low(MEM_STEPTABLE_LMD1) - 1)
+	ldi steptabstart, (low(MEM_STEPTABLE) - 2)
+	ldi steptabend, (low(MEM_STEPTABLE) + (NR_STEPS * 2 * 2))
 	clr dirswap
 
 
@@ -119,33 +113,28 @@ mainloop:
 						; We got a rising clock
 	sbrs sigin, IN_DIR_BIT
 	rjmp backward
-	inc XL					; Forward move
-	inc YL
+	add XL, two				; Forward move
 	cpse XL, steptabend			; Check for table wrap
 	rjmp fetchlmd
-	ldi XL, low(MEM_STEPTABLE_LMD1)		; Reset the table pointers
-	ldi YL, low(MEM_STEPTABLE_LMD2)
-	ldi t0, 0x03
-	eor dirswap, t0				; Swap polarity
+	ldi XL, low(MEM_STEPTABLE)		; Reset the table pointer
+	eor dirswap, three			; Swap polarity
 	rjmp fetchlmd
  backward:
-	dec XL					; Backward move
-	dec YL
+	sub XL, two				; Backward move
 	cpse XL, steptabstart			; Check for table wrap
 	rjmp fetchlmd
-	ldi XL, (low(MEM_STEPTABLE_LMD1) + (NR_STEPS * 2) - 1)	; Reset the table pointers
-	ldi YL, (low(MEM_STEPTABLE_LMD2) + (NR_STEPS * 2) - 1)
-	ldi t0, 0x03
-	eor dirswap, t0				; Swap polarity
+	ldi XL, (low(MEM_STEPTABLE) + (NR_STEPS * 2 * 2) - 2) ; Reset the table pointer
+	eor dirswap, three			; Swap polarity
 
  fetchlmd:
-	ld t0, X				; Get the LMD1 value
-	ld t4, Y				; Get the LMD2 value
-	mov t1, t4				; Get the polarity values
-	andi t4, 0xF0
+	ld t0, X+				; Get the LMD1 value
+	ld t2, X				; Get the LMD2 value
+	dec XL
+	mov t1, t2				; Get the polarity values
+	andi t2, 0xF0
 	andi t1, 0x03
 	eor t1, dirswap				; Apply the polarity swap
-	or t0, t4				; Prepare the DAC output value
+	or t0, t2				; Prepare the DAC output value
 
 	out DIROUT_PORT, t1			; Set the directions (polarity)
 	out DAC_PORT, t0			; Set the voltage levels

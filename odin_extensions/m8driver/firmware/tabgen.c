@@ -59,7 +59,7 @@ static unsigned int template_find_amplitude(const char *template,
 
 static int gen_tab(const char *template, unsigned int nr_steps)
 {
-	unsigned int col, col2, lmd;
+	unsigned int col, col2, lmd1, lmd2;
 	unsigned int count;
 
 	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
@@ -68,34 +68,24 @@ static int gen_tab(const char *template, unsigned int nr_steps)
 	printf(".cseg\n");
 	printf("\n");
 
-	printf("steptable_lmd1:");
+	printf("steptable:");
 	count = 0;
 	for (col = 0; col < nr_steps * 2; col++) {
-		lmd = template_find_amplitude(template, nr_steps, col);
-		if (count == 0)
-			printf("\n.db ");
-		printf("0x%02X, ", lmd);
-		count = (count + 1) & 3;
-	}
-	printf("\n\n");
-
-	printf("steptable_lmd2:");
-	count = 0;
-	for (col = 0; col < nr_steps * 2; col++) {
+		lmd1 = template_find_amplitude(template, nr_steps, col);
 		col2 = col + nr_steps;
 		if (col2 >= nr_steps * 2)
 			col2 -= nr_steps * 2;
-		lmd = template_find_amplitude(template, nr_steps, col2);
-		lmd <<= 4;
+		lmd2 = template_find_amplitude(template, nr_steps, col2);
+		lmd2 <<= 4;
 		/* Polarity */
 		if (col <= nr_steps)
-			lmd |= 3;
+			lmd2 |= 3;
 		else
-			lmd |= 2;
+			lmd2 |= 2;
 
 		if (count == 0)
 			printf("\n.db ");
-		printf("0x%02X, ", lmd);
+		printf("0x%02X, 0x%02X, ", lmd1, lmd2);
 		count = (count + 1) & 3;
 	}
 	printf("\n");
