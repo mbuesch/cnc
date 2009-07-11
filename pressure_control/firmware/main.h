@@ -44,22 +44,25 @@ struct pressure_config {
 struct pressure_state {
 	/* Sensing and adjustment logic enabled? */
 	bool device_enabled;
-	/* The last measured pressure (in mBar) */
+	/* The last measured pressure (in mBar).
+	 * It depends on sensor_cycle which valves this
+	 * value belongs to. */
 	uint16_t measured_mbar;
+	/* The current pressure for the individual valves */
+	uint16_t measured_mbar_xy;
+	uint16_t measured_mbar_z;
 	/* Reported pressure via RS232 */
-	uint16_t reported_mbar;
+	uint16_t reported_mbar_xy;
+	uint16_t reported_mbar_z;
 	/* True, if the current pressure value needs checking against
 	 * the desired pressure config. */
 	bool needs_checking;
-	/* Trigger count:
-	 * >0 = waiting
-	 * 0  = trigger now
-	 * -1 = triggered and running. */
-	int8_t sensor_trigger_cnt;
 };
 
-void get_pressure_config(struct pressure_config *cfg);
-void set_pressure_config(struct pressure_config *cfg);
+void get_pressure_config(struct pressure_config *xy,
+			 struct pressure_config *z);
+void set_pressure_config(struct pressure_config *xy,
+			 struct pressure_config *z);
 void get_pressure_state(struct pressure_state *state);
 void prepare_turn_on(void);
 void prepare_shutdown(void);

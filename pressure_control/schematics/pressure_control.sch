@@ -1,11 +1,11 @@
 EESchema Schematic File Version 1
-LIBS:power,./atmega8-16PI,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves
+LIBS:power,./atmega8-16PI,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves,./pressure_control.cache
 EELAYER 23  0
 EELAYER END
 $Descr A4 11700 8267
 Sheet 1 1
 Title "AVR based pressure control"
-Date "29 may 2009"
+Date "13 jun 2009"
 Rev "0.1"
 Comp ""
 Comment1 ""
@@ -14,15 +14,21 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 Wire Wire Line
-	7550 5750 7550 2800
+	9950 1050 9950 900 
 Wire Wire Line
-	7550 5750 7400 5750
+	9100 1450 9100 1600
+Connection ~ 5450 5700
 Wire Wire Line
-	7400 5750 7400 6200
+	5450 5450 5450 5700
+Wire Wire Line
+	7550 5650 7550 2800
+Wire Wire Line
+	7550 5650 7400 5650
+Connection ~ 7000 5900
+Wire Wire Line
+	7000 5900 7000 5650
 Wire Wire Line
 	7200 6050 7200 6200
-Wire Wire Line
-	7300 6050 7300 6200
 Wire Wire Line
 	6950 2900 7450 2900
 Connection ~ 7900 2600
@@ -258,52 +264,136 @@ Connection ~ 7900 2900
 Wire Wire Line
 	7550 2800 6950 2800
 Wire Wire Line
-	7450 2900 7450 5650
-Wire Wire Line
-	7450 5650 5850 5650
-Wire Wire Line
-	5850 5650 5850 6200
-Wire Wire Line
-	5750 6050 5750 6200
-Wire Wire Line
 	5650 6050 5650 6200
+Wire Wire Line
+	5850 6200 5850 5450
+Wire Wire Line
+	7450 2900 7450 5450
+Wire Wire Line
+	7300 6200 7300 5900
+Wire Wire Line
+	7300 5900 6850 5900
+Wire Wire Line
+	7400 5650 7400 6200
+Wire Wire Line
+	5750 6200 5750 5700
+Wire Wire Line
+	5750 5700 5300 5700
+Wire Wire Line
+	7450 5450 5850 5450
+Wire Wire Line
+	9100 900  9100 1050
+Wire Wire Line
+	9950 1600 9950 1450
+$Comp
+L GND #PWR31
+U 1 1 4A33FE78
+P 9100 1600
+F 0 "#PWR31" H 9100 1600 30  0001 C C
+F 1 "GND" H 9100 1530 30  0001 C C
+	1    9100 1600
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR33
+U 1 1 4A33FE6F
+P 9950 1600
+F 0 "#PWR33" H 9950 1600 30  0001 C C
+F 1 "GND" H 9950 1530 30  0001 C C
+	1    9950 1600
+	1    0    0    -1  
+$EndComp
+$Comp
+L +24V #PWR32
+U 1 1 4A33FE65
+P 9950 900
+F 0 "#PWR32" H 9950 850 20  0001 C C
+F 1 "+24V" H 9950 1000 30  0000 C C
+	1    9950 900 
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR30
+U 1 1 4A33FE52
+P 9100 900
+F 0 "#PWR30" H 9100 990 20  0001 C C
+F 1 "+5V" H 9100 990 30  0000 C C
+	1    9100 900 
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C11
+U 1 1 4A33FE43
+P 9950 1250
+F 0 "C11" H 10000 1350 50  0000 L C
+F 1 "330uF/64V" H 10000 1150 50  0000 L C
+	1    9950 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C10
+U 1 1 4A33FE40
+P 9100 1250
+F 0 "C10" H 9150 1350 50  0000 L C
+F 1 "470uF/16V" H 9150 1150 50  0000 L C
+	1    9100 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C9
+U 1 1 4A339C84
+P 7200 5650
+F 0 "C9" H 7250 5750 50  0000 L C
+F 1 "10n" H 7250 5550 50  0000 L C
+	1    7200 5650
+	0    1    1    0   
+$EndComp
+$Comp
+L C C8
+U 1 1 4A339BF6
+P 5650 5450
+F 0 "C8" H 5700 5550 50  0000 L C
+F 1 "10n" H 5700 5350 50  0000 L C
+	1    5650 5450
+	0    1    1    0   
+$EndComp
 NoConn ~ 6950 1900
 NoConn ~ 6950 1800
 $Comp
-L +5V #PWR20
+L +5V #PWR21
 U 1 1 4A20046C
 P 5650 6050
-F 0 "#PWR20" H 5650 6140 20  0001 C C
+F 0 "#PWR21" H 5650 6140 20  0001 C C
 F 1 "+5V" H 5650 6140 30  0000 C C
 	1    5650 6050
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR24
+L +5V #PWR25
 U 1 1 4A200467
 P 7200 6050
-F 0 "#PWR24" H 7200 6140 20  0001 C C
+F 0 "#PWR25" H 7200 6140 20  0001 C C
 F 1 "+5V" H 7200 6140 30  0000 C C
 	1    7200 6050
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR21
+L GND #PWR18
 U 1 1 4A20044B
-P 5750 6050
-F 0 "#PWR21" H 5750 6050 30  0001 C C
-F 1 "GND" H 5750 5980 30  0001 C C
-	1    5750 6050
-	-1   0    0    1   
+P 5300 5700
+F 0 "#PWR18" H 5300 5700 30  0001 C C
+F 1 "GND" H 5300 5630 30  0001 C C
+	1    5300 5700
+	0    1    1    0   
 $EndComp
 $Comp
-L GND #PWR26
+L GND #PWR24
 U 1 1 4A200441
-P 7300 6050
-F 0 "#PWR26" H 7300 6050 30  0001 C C
-F 1 "GND" H 7300 5980 30  0001 C C
-	1    7300 6050
-	-1   0    0    1   
+P 6850 5900
+F 0 "#PWR24" H 6850 5900 30  0001 C C
+F 1 "GND" H 6850 5830 30  0001 C C
+	1    6850 5900
+	0    1    1    0   
 $EndComp
 NoConn ~ 5550 6200
 NoConn ~ 5450 6200
@@ -522,28 +612,28 @@ NoConn ~ 10500 5700
 NoConn ~ 10400 5700
 NoConn ~ 10300 5700
 $Comp
-L GND #PWR32
+L GND #PWR36
 U 1 1 48EC97E3
 P 10700 5550
-F 0 "#PWR32" H 10700 5550 30  0001 C C
+F 0 "#PWR36" H 10700 5550 30  0001 C C
 F 1 "GND" H 10700 5480 30  0001 C C
 	1    10700 5550
 	-1   0    0    1   
 $EndComp
 $Comp
-L GND #PWR30
+L GND #PWR34
 U 1 1 48EC97C8
 P 10300 4600
-F 0 "#PWR30" H 10300 4600 30  0001 C C
+F 0 "#PWR34" H 10300 4600 30  0001 C C
 F 1 "GND" H 10300 4530 30  0001 C C
 	1    10300 4600
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR31
+L +5V #PWR35
 U 1 1 48EC97A6
 P 10500 4000
-F 0 "#PWR31" H 10500 4090 20  0001 C C
+F 0 "#PWR35" H 10500 4090 20  0001 C C
 F 1 "+5V" H 10500 4090 30  0000 C C
 	1    10500 4000
 	-1   0    0    1   
@@ -639,10 +729,10 @@ F 1 "47p" H 8300 2800 50  0000 L C
 	0    1    1    0   
 $EndComp
 $Comp
-L +5V #PWR25
+L +5V #PWR26
 U 1 1 48EB400B
 P 7250 1200
-F 0 "#PWR25" H 7250 1290 20  0001 C C
+F 0 "#PWR26" H 7250 1290 20  0001 C C
 F 1 "+5V" H 7250 1290 30  0000 C C
 	1    7250 1200
 	-1   0    0    1   
@@ -785,10 +875,10 @@ F 1 "GND" H 5950 4180 30  0001 C C
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR18
+L GND #PWR19
 U 1 1 48EB35A4
 P 5550 4250
-F 0 "#PWR18" H 5550 4250 30  0001 C C
+F 0 "#PWR19" H 5550 4250 30  0001 C C
 F 1 "GND" H 5550 4180 30  0001 C C
 	1    5550 4250
 	1    0    0    -1  
@@ -803,10 +893,10 @@ F 1 "+5V" H 6050 1040 30  0000 C C
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR19
+L +5V #PWR20
 U 1 1 48EB3587
 P 5650 950
-F 0 "#PWR19" H 5650 1040 20  0001 C C
+F 0 "#PWR20" H 5650 1040 20  0001 C C
 F 1 "+5V" H 5650 1040 30  0000 C C
 	1    5650 950 
 	1    0    0    -1  
