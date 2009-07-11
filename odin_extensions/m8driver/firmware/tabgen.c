@@ -17,78 +17,96 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+#undef M_PI
+#define M_PI		3.14159265358979323846264338327
 
 
-static const char template_25steps[] =
-"                     ########                     "
-"                  ###        ###                  "
-"                ##              ##                "
-"              ##                  ##              "
-"            ##                      ##            "
-"          ##                          ##          "
-"         #                              #         "
-"        #                                #        "
-"       #                                  #       "
-"      #                                    #      "
-"     #                                      #     "
-"    #                                        #    "
-"   #                                          #   "
-"  #                                            #  "
-" #                                              # "
-"#                                                #";
-
-
-static unsigned int template_find_amplitude(const char *template,
-					    unsigned int nr_steps, unsigned int column)
+static int gen_lmd_tab(unsigned int nr_steps)
 {
-	unsigned int row;
-	char c;
+	double pos;
+	double s;
+	unsigned int lmd1, lmd2, polarity;
+	unsigned int count;
+	int row, col;
+	char *buf;
 
-	for (row = 0; row <= 0xF; row++) {
-		c = template[row * nr_steps * 2 + column];
-		if (c != ' ')
-			break;
-	}
-	if (row > 0xF) {
-		fprintf(stderr, "Table error\n");
+	buf = malloc(nr_steps * 2 * 2);
+	if (!buf) {
+		fprintf(stderr, "Out of memory.\n");
 		return 1;
 	}
 
-	return 0xF - row;
-}
+	/* Generate the lookup table. */
+	/* sin() takes radians as arg. pi rad == 180deg */
+	for (count = 0; count < nr_steps * 2; count++) {
+		pos = M_PI / (nr_steps * 2) * count;
+		polarity = 0;
 
-static int gen_tab(const char *template, unsigned int nr_steps)
-{
-	unsigned int col, col2, lmd1, lmd2;
-	unsigned int count;
+		s = sin(pos);
+		s = s * 0xF;
+		lmd1 = (unsigned int)round(s) & 0xF;
+		polarity |= 1;
 
-	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
-	printf("\n");
-	printf(".equ NR_STEPS = %u\n", nr_steps);
-	printf(".cseg\n");
-	printf("\n");
-
-	printf("steptable:");
-	count = 0;
-	for (col = 0; col < nr_steps * 2; col++) {
-		lmd1 = template_find_amplitude(template, nr_steps, col);
-		col2 = col + nr_steps;
-		if (col2 >= nr_steps * 2)
-			col2 -= nr_steps * 2;
-		lmd2 = template_find_amplitude(template, nr_steps, col2);
-		lmd2 <<= 4;
-		/* Polarity */
-		if (col <= nr_steps)
-			lmd2 |= 3;
+		s = cos(pos);
+		if (s < 0)
+			s = -s;
 		else
-			lmd2 |= 2;
+			polarity |= 2;
+		s = s * 0xF;
+		lmd2 = (unsigned int)round(s) & 0xF;
+		lmd2 <<= 4;
+		lmd2 |= polarity;
 
-		if (count == 0)
-			printf("\n.db ");
-		printf("0x%02X, 0x%02X, ", lmd1, lmd2);
-		count = (count + 1) & 3;
+		buf[count * 2] = lmd1;
+		buf[count * 2 + 1] = lmd2;
+	}
+
+	/* Print a diagram. */
+	for (row = 15; row >= -15; row--) {
+		printf("; %3d | ", row);
+		for (col = 0; col < nr_steps * 2; col++) {
+			char c = ' ';
+			int l1, l2;
+			char polarity;
+
+			l1 = buf[col * 2];
+			l2 = buf[col * 2 + 1] >> 4;
+			polarity = buf[col * 2 + 1] & 0xF;
+			if (!(polarity & 1))
+				l1 = -l1;
+			if (!(polarity & 2))
+				l2 = -l2;
+			if (l1 == row)
+				c = '&';
+			if (l2 == row)
+				c = '$';
+			putchar(c);
+		}
+		putchar('\n');
+	}
+	printf(";     L-");
+	for (col = 0; col < nr_steps * 2; col++)
+		putchar('-');
+	printf("\n;       ");
+	for (col = 0; col < nr_steps * 2; col += 4)
+		printf("%-4u", col);
+	putchar('\n');
+
+	/* Print the lookup table. */
+	printf("steptable:\n");
+	for (count = 0; count < nr_steps * 2; count++) {
+		lmd1 = buf[count * 2];
+		lmd2 = buf[count * 2 + 1];
+		printf(".db 0x%02X, 0x%02X    ; LMD1 = %2u/%s,  LMD2 = %2u/%s\n",
+		       lmd1, lmd2,
+		       lmd1, (lmd2 & 1) ? "f" : "b",
+		       lmd2 >> 4, (lmd2 & 2) ? "f" : "b");
 	}
 	printf("\n");
+
+	free(buf);
 
 	return 0;
 }
@@ -102,11 +120,16 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	nr_steps = strtoul(argv[1], NULL, 10);
-	switch (nr_steps) {
-	case 25:
-		return gen_tab(template_25steps, nr_steps);
-	default:
-		fprintf(stderr, "%lu is not a valid microstep value\n", nr_steps);
+	if (nr_steps < 8 || nr_steps > 30) {
+		fprintf(stderr, "Please select a step count between 8 and 30\n");
 		return 1;
 	}
+
+	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
+	printf("\n");
+	printf(".equ NR_STEPS = %u\n", nr_steps);
+	printf(".cseg\n");
+	printf("\n");
+
+	return gen_lmd_tab(nr_steps);
 }
