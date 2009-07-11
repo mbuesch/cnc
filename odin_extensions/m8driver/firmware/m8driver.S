@@ -107,6 +107,7 @@ reset:
 	clr dirswap
 
 	; Initially set the outputs and enter the mainloop
+	in sigin, IN_PIN
 	rjmp handle_rising_clk
 
 
