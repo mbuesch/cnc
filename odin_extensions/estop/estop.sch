@@ -1,10 +1,10 @@
-EESchema Schematic File Version 2
+EESchema Schematic File Version 1
 LIBS:power,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves
-EELAYER 43  0
+EELAYER 23  0
 EELAYER END
 $Descr A4 11700 8267
 Sheet 1 1
-Title "Extensions to the ODIN stepper motor control board"
+Title "E-Stop extension to the ODIN stepper motor control board"
 Date "24 feb 2009"
 Rev "1"
 Comp "Copyright (c) 2009 Michael Buesch <mb@bu3sch.de>"
