@@ -1,13 +1,13 @@
 EESchema Schematic File Version 1
-LIBS:power,./crystalosc,./atmega8x,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves,./m8driver.cache
+LIBS:power,./crystalosc,./atmega8x,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves
 EELAYER 23  0
 EELAYER END
 $Descr A4 11700 8267
 Sheet 1 1
-Title ""
+Title "Atmel Mega8 based replacement driver for the ODIN board"
 Date "11 jul 2009"
-Rev ""
-Comp ""
+Rev "1"
+Comp "Copyright (c) 2009 Michael Buesch"
 Comment1 ""
 Comment2 ""
 Comment3 ""

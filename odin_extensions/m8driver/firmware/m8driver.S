@@ -106,12 +106,16 @@ reset:
 	ldi steptabend, (low(MEM_STEPTABLE) + (NR_STEPS * 2 * 2))
 	clr dirswap
 
+	; Initially set the outputs and enter the mainloop
+	rjmp handle_rising_clk
+
 
 mainloop:
 	in sigin, IN_PIN			; Get the input signals
 	sbrs sigin, IN_CLK_BIT
 	rjmp mainloop
-						; We got a rising clock
+
+ handle_rising_clk:				; We got a rising clock
 	sbrs sigin, IN_DIR_BIT
 	rjmp backward
 	add XL, two				; Forward move
