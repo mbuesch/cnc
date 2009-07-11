@@ -3,5 +3,7 @@
 *.swp
 *.bin
 *.hex
+*.cof
+*.obj
 *.bak
 *.cache.*
