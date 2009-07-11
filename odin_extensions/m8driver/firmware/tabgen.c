@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 
 	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
 	printf("\n");
-	printf(".equ NR_STEPS = %u\n", nr_steps);
+	printf(".equ NR_STEPS = %lu\n", nr_steps);
 	printf(".cseg\n");
 	printf("\n");
 
