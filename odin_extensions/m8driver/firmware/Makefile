@@ -42,7 +42,7 @@ reset:
 	 -U signature:r:/dev/null:i -q -q
 
 writefuse:
-	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
+	$(AVRDUDE) -B 10 -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -q -q \
 	 -U lfuse:w:$(LFUSE):m \
 	 -U hfuse:w:$(HFUSE):m
