@@ -1,11 +1,11 @@
 EESchema Schematic File Version 1
-LIBS:power,./crystalosc,./atmega8x,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves
+LIBS:power,./crystalosc,./atmega8x,device,conn,linear,regul,74xx,cmos4000,adc-dac,memory,xilinx,special,microcontrollers,dsp,microchip,analog_switches,motorola,texas,intel,audio,interface,digital-audio,philips,display,cypress,siliconi,contrib,valves,./m8driver.cache
 EELAYER 23  0
 EELAYER END
 $Descr A4 11700 8267
 Sheet 1 1
 Title "Atmel Mega8 based replacement driver for the ODIN board"
-Date "11 jul 2009"
+Date "12 jul 2009"
 Rev "1"
 Comp "Copyright (c) 2009 Michael Buesch"
 Comment1 ""
@@ -13,21 +13,11 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
-NoConn ~ 9950 4650
-NoConn ~ 9250 5650
-NoConn ~ 9250 5350
-NoConn ~ 9250 5550
-NoConn ~ 9250 5150
-NoConn ~ 7000 4550
-NoConn ~ 7000 4450
-NoConn ~ 7000 4350
-NoConn ~ 1850 4150
-Text Notes 8450 4400 0    60   ~
-FIXME additional external pullups?
-Text Label 8850 4750 0    50   ~
-DIR
-Text Label 8850 4650 0    50   ~
-CLK
+Connection ~ 8750 4750
+Wire Wire Line
+	8750 4850 8750 4750
+Wire Wire Line
+	8750 5350 8750 5400
 Wire Wire Line
 	2200 1800 2200 1950
 Wire Wire Line
@@ -183,20 +173,74 @@ Wire Wire Line
 	10250 2300 10350 2300
 Wire Wire Line
 	2200 1300 2200 1400
+Wire Wire Line
+	8550 5400 8550 5350
+Wire Wire Line
+	8550 4850 8550 4650
+Connection ~ 8550 4650
 $Comp
-L GND #PWR3
+L +5V #PWR13
+U 1 1 4A5A3DD8
+P 8750 5400
+F 0 "#PWR13" H 8750 5490 20  0001 C C
+F 1 "+5V" H 8750 5490 30  0000 C C
+	1    8750 5400
+	-1   0    0    1   
+$EndComp
+$Comp
+L +5V #PWR12
+U 1 1 4A5A3DD2
+P 8550 5400
+F 0 "#PWR12" H 8550 5490 20  0001 C C
+F 1 "+5V" H 8550 5490 30  0000 C C
+	1    8550 5400
+	-1   0    0    1   
+$EndComp
+$Comp
+L R R4
+U 1 1 4A5A3DC1
+P 8550 5100
+F 0 "R4" V 8630 5100 50  0000 C C
+F 1 "1k" V 8550 5100 50  0000 C C
+	1    8550 5100
+	1    0    0    -1  
+$EndComp
+$Comp
+L R R5
+U 1 1 4A5A3DBB
+P 8750 5100
+F 0 "R5" V 8830 5100 50  0000 C C
+F 1 "1k" V 8750 5100 50  0000 C C
+	1    8750 5100
+	1    0    0    -1  
+$EndComp
+NoConn ~ 9950 4650
+NoConn ~ 9250 5650
+NoConn ~ 9250 5350
+NoConn ~ 9250 5550
+NoConn ~ 9250 5150
+NoConn ~ 7000 4550
+NoConn ~ 7000 4450
+NoConn ~ 7000 4350
+NoConn ~ 1850 4150
+Text Label 8850 4750 0    50   ~
+DIR
+Text Label 8850 4650 0    50   ~
+CLK
+$Comp
+L GND #PWR2
 U 1 1 4A579F9C
 P 2200 1950
-F 0 "#PWR3" H 2200 1950 30  0001 C C
+F 0 "#PWR2" H 2200 1950 30  0001 C C
 F 1 "GND" H 2200 1880 30  0001 C C
 	1    2200 1950
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR2
+L +5V #PWR1
 U 1 1 4A579F96
 P 2200 1300
-F 0 "#PWR2" H 2200 1390 20  0001 C C
+F 0 "#PWR1" H 2200 1390 20  0001 C C
 F 1 "+5V" H 2200 1390 30  0000 C C
 	1    2200 1300
 	1    0    0    -1  
@@ -239,19 +283,19 @@ F 1 "ISP" V 9850 2500 40  0000 C C
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR9
+L +5V #PWR8
 U 1 1 4A579E71
 P 6100 2250
-F 0 "#PWR9" H 6100 2340 20  0001 C C
+F 0 "#PWR8" H 6100 2340 20  0001 C C
 F 1 "+5V" H 6100 2340 30  0000 C C
 	1    6100 2250
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR7
+L +5V #PWR6
 U 1 1 4A579E6C
 P 5700 2250
-F 0 "#PWR7" H 5700 2340 20  0001 C C
+F 0 "#PWR6" H 5700 2340 20  0001 C C
 F 1 "+5V" H 5700 2340 30  0000 C C
 	1    5700 2250
 	1    0    0    -1  
@@ -260,10 +304,10 @@ NoConn ~ 5500 2350
 Text Notes 5750 7150 0    50   ~
 Reset delay
 $Comp
-L GND #PWR12
+L GND #PWR11
 U 1 1 4A579E12
 P 7800 5050
-F 0 "#PWR12" H 7800 5050 30  0001 C C
+F 0 "#PWR11" H 7800 5050 30  0001 C C
 F 1 "GND" H 7800 4980 30  0001 C C
 	1    7800 5050
 	0    -1   -1   0   
@@ -278,10 +322,10 @@ F 1 "47p" H 7450 4950 50  0000 L C
 	0    1    1    0   
 $EndComp
 $Comp
-L +5V #PWR11
+L +5V #PWR10
 U 1 1 4A579DEF
 P 7750 4750
-F 0 "#PWR11" H 7750 4840 20  0001 C C
+F 0 "#PWR10" H 7750 4840 20  0001 C C
 F 1 "+5V" H 7750 4840 30  0000 C C
 	1    7750 4750
 	0    1    1    0   
@@ -296,10 +340,10 @@ F 1 "1k" V 7450 4750 50  0000 C C
 	0    1    1    0   
 $EndComp
 $Comp
-L +5V #PWR5
+L +5V #PWR4
 U 1 1 4A579DC1
 P 5200 6750
-F 0 "#PWR5" H 5200 6840 20  0001 C C
+F 0 "#PWR4" H 5200 6840 20  0001 C C
 F 1 "+5V" H 5200 6840 30  0000 C C
 	1    5200 6750
 	0    -1   -1   0   
@@ -323,10 +367,10 @@ F 1 "4.7k" V 6050 6750 50  0000 C C
 	0    1    1    0   
 $EndComp
 $Comp
-L GND #PWR10
+L GND #PWR9
 U 1 1 4A579D83
 P 7100 7150
-F 0 "#PWR10" H 7100 7150 30  0001 C C
+F 0 "#PWR9" H 7100 7150 30  0001 C C
 F 1 "GND" H 7100 7080 30  0001 C C
 	1    7100 7150
 	1    0    0    -1  
@@ -360,10 +404,10 @@ F 1 "+5V" H 10650 3840 30  0000 C C
 	0    1    1    0   
 $EndComp
 $Comp
-L GND #PWR13
+L GND #PWR14
 U 1 1 4A579CDA
 P 9050 3450
-F 0 "#PWR13" H 9050 3450 30  0001 C C
+F 0 "#PWR14" H 9050 3450 30  0001 C C
 F 1 "GND" H 9050 3380 30  0001 C C
 	1    9050 3450
 	0    1    1    0   
@@ -375,10 +419,10 @@ NoConn ~ 9250 5050
 NoConn ~ 9250 4950
 NoConn ~ 9250 4850
 $Comp
-L GND #PWR14
+L GND #PWR15
 U 1 1 4A579CA0
 P 9100 5750
-F 0 "#PWR14" H 9100 5750 30  0001 C C
+F 0 "#PWR15" H 9100 5750 30  0001 C C
 F 1 "GND" H 9100 5680 30  0001 C C
 	1    9100 5750
 	0    1    1    0   
@@ -395,19 +439,19 @@ NoConn ~ 9950 4950
 NoConn ~ 9950 4850
 NoConn ~ 9950 4750
 $Comp
-L GND #PWR6
+L GND #PWR5
 U 1 1 4A579BDB
 P 5600 5650
-F 0 "#PWR6" H 5600 5650 30  0001 C C
+F 0 "#PWR5" H 5600 5650 30  0001 C C
 F 1 "GND" H 5600 5580 30  0001 C C
 	1    5600 5650
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR8
+L GND #PWR7
 U 1 1 4A579BD7
 P 6000 5650
-F 0 "#PWR8" H 6000 5650 30  0001 C C
+F 0 "#PWR7" H 6000 5650 30  0001 C C
 F 1 "GND" H 6000 5580 30  0001 C C
 	1    6000 5650
 	1    0    0    -1  
@@ -434,10 +478,10 @@ Text Label 4100 3150 0    50   ~
 LMD1_M1
 NoConn ~ 2550 4150
 $Comp
-L +5V #PWR4
+L +5V #PWR3
 U 1 1 4A579AC8
 P 2650 3050
-F 0 "#PWR4" H 2650 3140 20  0001 C C
+F 0 "#PWR3" H 2650 3140 20  0001 C C
 F 1 "+5V" H 2650 3140 30  0000 C C
 	1    2650 3050
 	0    1    1    0   

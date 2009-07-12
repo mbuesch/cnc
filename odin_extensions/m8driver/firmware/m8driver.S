@@ -36,10 +36,6 @@
 .equ IN_PIN		= PINC
 .equ IN_CLK_BIT		= 0
 .equ IN_DIR_BIT		= 1
-.equ IN_JP1_BIT		= 2
-.equ IN_JP2_BIT		= 3
-.equ IN_REDUCT_BIT	= 4
-.equ IN_INV_BIT		= 5
 
 
 .dseg
