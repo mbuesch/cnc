@@ -23,6 +23,25 @@
 #define M_PI		3.14159265358979323846264338327
 
 
+#define COMPILE_YEAR ((((__DATE__[7] - '0') * 10 +				\
+			(__DATE__[8] - '0')) * 10 +				\
+			(__DATE__[9] - '0')) * 10 +				\
+			(__DATE__[10] - '0'))
+
+#define COMPILE_MONTH ((__DATE__[2] == 'n' ? (__DATE__[1] == 'a' ? 0 : 5)	\
+			: __DATE__[2] == 'b' ? 1				\
+			: __DATE__[2] == 'r' ? (__DATE__[0] == 'M' ? 2 : 3)	\
+			: __DATE__[2] == 'y' ? 4				\
+			: __DATE__[2] == 'l' ? 6				\
+			: __DATE__[2] == 'g' ? 7				\
+			: __DATE__[2] == 'p' ? 8				\
+			: __DATE__[2] == 't' ? 9				\
+			: __DATE__[2] == 'v' ? 10 : 11) + 1)
+
+#define COMPILE_DAY ((__DATE__[4] == ' ' ? 0 : __DATE__[4] - '0') * 10 +	\
+		     (__DATE__[5] - '0'))
+
+
 static int gen_lmd_tab(unsigned int nr_steps)
 {
 	double pos;
@@ -30,7 +49,7 @@ static int gen_lmd_tab(unsigned int nr_steps)
 	unsigned int lmd1, lmd2, polarity;
 	unsigned int count;
 	int row, col;
-	char *buf;
+	unsigned char *buf;
 
 	buf = malloc(nr_steps * 2 * 2);
 	if (!buf) {
@@ -57,10 +76,9 @@ static int gen_lmd_tab(unsigned int nr_steps)
 		s = s * 0xF;
 		lmd2 = (unsigned int)round(s) & 0xF;
 		lmd2 <<= 4;
-		lmd2 |= polarity;
 
-		buf[count * 2] = lmd1;
-		buf[count * 2 + 1] = lmd2;
+		buf[count * 2] = lmd1 | lmd2;
+		buf[count * 2 + 1] = polarity;
 	}
 
 	/* Print a diagram. */
@@ -69,11 +87,11 @@ static int gen_lmd_tab(unsigned int nr_steps)
 		for (col = 0; col < nr_steps * 2; col++) {
 			char c = ' ';
 			int l1, l2;
-			char polarity;
+			unsigned char polarity;
 
-			l1 = buf[col * 2];
-			l2 = buf[col * 2 + 1] >> 4;
-			polarity = buf[col * 2 + 1] & 0xF;
+			l1 = buf[col * 2] & 0xF;
+			l2 = buf[col * 2] >> 4;
+			polarity = buf[col * 2 + 1];
 			if (!(polarity & 1))
 				l1 = -l1;
 			if (!(polarity & 2))
@@ -97,12 +115,19 @@ static int gen_lmd_tab(unsigned int nr_steps)
 	/* Print the lookup table. */
 	printf("steptable:\n");
 	for (count = 0; count < nr_steps * 2; count++) {
-		lmd1 = buf[count * 2];
-		lmd2 = buf[count * 2 + 1];
-		printf(".db 0x%02X, 0x%02X    ; LMD1 = %2u/%s,  LMD2 = %2u/%s\n",
-		       lmd1, lmd2,
-		       lmd1, (lmd2 & 1) ? "f" : "b",
-		       lmd2 >> 4, (lmd2 & 2) ? "f" : "b");
+		unsigned int a, b;
+		int l1, l2;
+
+		a = buf[count * 2];
+		b = buf[count * 2 + 1];
+		l1 = a & 0xF;
+		if (!(b & 1))
+			l1 = -l1;
+		l2 = a >> 4;
+		if (!(b & 2))
+			l2 = -l2;
+		printf(".db 0x%02X, 0x%02X    ; LMD1 = %3d,  LMD2 = %3d\n",
+		       a, b, l1, l2);
 	}
 	printf("\n");
 
@@ -114,6 +139,8 @@ static int gen_lmd_tab(unsigned int nr_steps)
 int main(int argc, char **argv)
 {
 	unsigned long nr_steps;
+	unsigned int i;
+	char buf[32];
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s NR_OF_STEPS\n", argv[0]);
@@ -128,6 +155,17 @@ int main(int argc, char **argv)
 	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
 	printf("\n");
 	printf(".equ NR_STEPS = %lu\n", nr_steps);
+	snprintf(buf, sizeof(buf), "%02lu", nr_steps);
+	printf(".equ NR_STEPS_ASCII_0 = %u ; ASCII %c\n",
+	       (unsigned int)buf[0], (unsigned int)buf[0]);
+	printf(".equ NR_STEPS_ASCII_1 = %u ; ASCII %c\n",
+	       (unsigned int)buf[1], (unsigned int)buf[1]);
+	snprintf(buf, sizeof(buf), "%04u.%02u.%02u",
+		 COMPILE_YEAR, COMPILE_MONTH, COMPILE_DAY);
+	for (i = 0; i < 10; i++) {
+		printf(".equ BDATE%u = %u ; ASCII %c\n",
+		       i, (unsigned int)buf[i], (unsigned int)buf[i]);
+	}
 	printf(".cseg\n");
 	printf("\n");
 

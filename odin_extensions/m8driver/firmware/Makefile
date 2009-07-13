@@ -27,6 +27,9 @@ tables.S: tabgen
 
 $(HEX): m8driver.S m8def.inc tables.S
 	$(ASM) m8driver.S
+	-srec_cat $(HEX) -Intel -Output $(NAME).S.bin -Binary
+	@echo
+	@echo "Successfully built the firmware"
 
 install: all
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
@@ -48,4 +51,4 @@ writefuse:
 	 -U hfuse:w:$(HFUSE):m
 
 clean:
-	-rm -f *~ *.cof *.hex *.obj *.bak *.cache.* *.o tabgen tables.S
+	-rm -f *~ *.cof *.hex *.obj *.bin *.bak *.cache.* *.o tabgen tables.S

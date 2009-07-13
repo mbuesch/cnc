@@ -51,6 +51,10 @@ MEM_STEPTABLE:		.byte (30 * 2 * 2)
 	rjmp reset
 
 .org 0x026
+; For reference, store the build parameters in the flash image.
+.db "NR_STEPS=", NR_STEPS_ASCII_0, NR_STEPS_ASCII_1, 0,0,0
+.db "BUILD_DATE=",BDATE0,BDATE1,BDATE2,BDATE3,BDATE4,BDATE5,BDATE6,BDATE7,BDATE8,BDATE9,0,0,0
+
 reset:
 	cli
 
@@ -129,14 +133,10 @@ mainloop:
 	eor dirswap, three			; Swap polarity
 
  fetchlmd:
-	ld t0, X+				; Get the LMD1 value
-	ld t2, X				; Get the LMD2 value
+	ld t0, X+				; Get the LMD1/LMD2 DAC values
+	ld t1, X				; Get the polarities
 	dec XL
-	mov t1, t2				; Get the polarity values
-	andi t2, 0xF0
-	andi t1, 0x03
 	eor t1, dirswap				; Apply the polarity swap
-	or t0, t2				; Prepare the DAC output value
 
 	out DIROUT_PORT, t1			; Set the directions (polarity)
 	out DAC_PORT, t0			; Set the voltage levels
