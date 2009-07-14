@@ -42,8 +42,8 @@
 
 ; We need this at the start of RAM, so it is
 ; addressable with 8bit pointers.
-; Allocate enough space for 30 microsteps.
-MEM_STEPTABLE:		.byte (30 * 2 * 2)
+; Allocate enough space for 40 microsteps.
+MEM_STEPTABLE:		.byte (40 * 2 * 2)
 
 
 .cseg

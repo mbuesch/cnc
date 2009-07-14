@@ -147,8 +147,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	nr_steps = strtoul(argv[1], NULL, 10);
-	if (nr_steps < 8 || nr_steps > 30) {
-		fprintf(stderr, "Please select a step count between 8 and 30\n");
+	if (nr_steps < 1 || nr_steps > 40) {
+		fprintf(stderr, "Please select a step count between 1 and 40\n");
 		return 1;
 	}
 
