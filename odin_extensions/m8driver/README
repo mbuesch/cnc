@@ -46,6 +46,14 @@ Customization:
   microstep count.
 
 
+There are no electrical changes required to the ODIN board. The m8driver fits
+into the existing two GAL22V10 chip sockets. Only a small change to the heat
+sink is required to gain some extra space for the m8driver boards.
+But you can always remove the m8drivers again and re-install the GAL22V10.
+It's Plug-And-Play.
+
+
+
 Building the firmware from sources
 ==================================
 
