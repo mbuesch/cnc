@@ -40,10 +40,11 @@
 
 .dseg
 
-; We need this at the start of RAM, so it is
-; addressable with 8bit pointers.
-; Allocate enough space for 40 microsteps.
-MEM_STEPTABLE:		.byte (40 * 2 * 2)
+; Allocate enough space for 60 microsteps.
+; Align to 0x100 so that the high byte of the pointer will
+; never change.
+.org 0x100
+MEM_STEPTABLE:		.byte (60 * 2 * 2)
 
 
 .cseg
@@ -55,6 +56,9 @@ MEM_STEPTABLE:		.byte (40 * 2 * 2)
 .db "NR_STEPS=", NR_STEPS_ASCII_0, NR_STEPS_ASCII_1, 0,0,0
 .db "BUILD_DATE=",BDATE0,BDATE1,BDATE2,BDATE3,BDATE4,BDATE5,BDATE6,BDATE7,BDATE8,BDATE9,0,0,0
 
+;*******************************************
+;*** ENTRY POINT                         ***
+;*******************************************
 reset:
 	cli
 
@@ -93,7 +97,7 @@ reset:
 	ldi ZL, low(steptable * 2)
 	ldi ZH, high(steptable * 2)
 	ldi XL, low(MEM_STEPTABLE)
-	clr XH
+	ldi XH, high(MEM_STEPTABLE)
  copy:	lpm t1, Z+
 	st X+, t1
 	dec t0
@@ -101,7 +105,7 @@ reset:
 
 	; Init the status registers
 	ldi XL, low(MEM_STEPTABLE)		; X is the table pointer
-	clr XH
+	ldi XH, high(MEM_STEPTABLE)
 	ldi steptabstart, (low(MEM_STEPTABLE) - 2)
 	ldi steptabend, (low(MEM_STEPTABLE) + (NR_STEPS * 2 * 2))
 	clr dirswap
@@ -110,7 +114,9 @@ reset:
 	in sigin, IN_PIN
 	rjmp handle_rising_clk
 
-
+;*******************************************
+;*** MAINLOOP                            ***
+;*******************************************
 mainloop:
 	in sigin, IN_PIN			; Get the input signals
 	sbrs sigin, IN_CLK_BIT

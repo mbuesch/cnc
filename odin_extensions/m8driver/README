@@ -45,6 +45,17 @@ Customization:
   this by specifying STEPS=XX to the "make" command, where XX is the desired
   microstep count.
 
+Lots of possible microstep rates:
+  The m8driver can be configured from 1 microstep (fullstep) to 60 microsteps.
+  Additionally you can get the 30 microsteps _without_ modifying the hardware.
+  (The original GAL22V10 drivers need electrical hardware modification for the
+  30 step variant.)
+  Note that as the output DACs are only 4 bit, higher step rates than about 30
+  do not gain much (if any) precision.
+  It is possible to get even higher than 60 microstep rates, if demanded by your
+  setup, but this requires modification of the sourcecode. Please contact me, if
+  you need this.
+
 
 There are no electrical changes required to the ODIN board. The m8driver fits
 into the existing two GAL22V10 chip sockets. Only a small change to the heat
