@@ -97,6 +97,7 @@ enter_estop_loop:
 	cbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT	; Stop the master spindle
 	sbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Activate the joints brake
 	sbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; Assert the E-STOP output signal
+	mdelay 100					; Avoid fast bouncing between estop/run
 estop_loop:
 	sbic ESTOP_IN_PIN, ESTOP_IN_BIT			; Have E-STOP from EMC?
 	rjmp estop_loop
