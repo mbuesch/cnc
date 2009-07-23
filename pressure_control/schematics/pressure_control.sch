@@ -5,7 +5,7 @@ EELAYER END
 $Descr A4 11700 8267
 Sheet 1 1
 Title "AVR based pressure control"
-Date "13 jun 2009"
+Date "23 jul 2009"
 Rev "0.1"
 Comp ""
 Comment1 ""
@@ -13,6 +13,16 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+Wire Wire Line
+	11150 3600 11150 5350
+Wire Wire Line
+	11150 3600 10950 3600
+Wire Wire Line
+	10950 3000 10950 3200
+Wire Wire Line
+	10950 3000 10800 3000
+Wire Wire Line
+	10500 2800 10500 2600
 Wire Wire Line
 	9950 1050 9950 900 
 Wire Wire Line
@@ -32,8 +42,6 @@ Wire Wire Line
 Wire Wire Line
 	6950 2900 7450 2900
 Connection ~ 7900 2600
-Wire Wire Line
-	6950 3400 7900 3400
 Wire Wire Line
 	7900 3400 7900 2600
 Wire Wire Line
@@ -285,6 +293,59 @@ Wire Wire Line
 	9100 900  9100 1050
 Wire Wire Line
 	9950 1600 9950 1450
+Wire Wire Line
+	6950 3400 10500 3400
+Wire Wire Line
+	10500 3400 10500 3200
+Connection ~ 7900 3400
+Wire Wire Line
+	10500 2700 11100 2700
+Connection ~ 10500 2700
+Wire Wire Line
+	11150 5350 10500 5350
+Wire Wire Line
+	10500 5350 10500 5700
+Wire Wire Line
+	10950 3200 11100 3200
+$Comp
+L DIODE D1
+U 1 1 4A6895BC
+P 10950 3400
+F 0 "D1" H 10950 3500 40  0000 C C
+F 1 "1N4148" H 10950 3300 40  0000 C C
+	1    10950 3400
+	0    -1   -1   0   
+$EndComp
+Text Label 10500 5600 1    60   ~
+RTS
+$Comp
+L R R18
+U 1 1 4A6894C4
+P 11100 2950
+F 0 "R18" V 11180 2950 50  0000 C C
+F 1 "10k" V 11100 2950 50  0000 C C
+	1    11100 2950
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR35
+U 1 1 4A6894AF
+P 10500 2600
+F 0 "#PWR35" H 10500 2600 30  0001 C C
+F 1 "GND" H 10500 2530 30  0001 C C
+	1    10500 2600
+	-1   0    0    1   
+$EndComp
+$Comp
+L MOSFET_N Q9
+U 1 1 4A689470
+P 10600 3000
+F 0 "Q9" H 10610 3170 60  0000 R C
+F 1 "BS170" H 10610 2850 60  0000 R C
+	1    10600 3000
+	-1   0    0    1   
+$EndComp
+NoConn ~ 10600 5700
 $Comp
 L GND #PWR31
 U 1 1 4A33FE78
@@ -607,15 +668,13 @@ NoConn ~ 10200 5300
 NoConn ~ 10200 5100
 NoConn ~ 11100 5700
 NoConn ~ 10800 5700
-NoConn ~ 10600 5700
-NoConn ~ 10500 5700
 NoConn ~ 10400 5700
 NoConn ~ 10300 5700
 $Comp
-L GND #PWR36
+L GND #PWR37
 U 1 1 48EC97E3
 P 10700 5550
-F 0 "#PWR36" H 10700 5550 30  0001 C C
+F 0 "#PWR37" H 10700 5550 30  0001 C C
 F 1 "GND" H 10700 5480 30  0001 C C
 	1    10700 5550
 	-1   0    0    1   
@@ -630,10 +689,10 @@ F 1 "GND" H 10300 4530 30  0001 C C
 	1    0    0    -1  
 $EndComp
 $Comp
-L +5V #PWR35
+L +5V #PWR36
 U 1 1 48EC97A6
 P 10500 4000
-F 0 "#PWR35" H 10500 4090 20  0001 C C
+F 0 "#PWR36" H 10500 4090 20  0001 C C
 F 1 "+5V" H 10500 4090 30  0000 C C
 	1    10500 4000
 	-1   0    0    1   
