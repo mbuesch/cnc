@@ -122,6 +122,8 @@ class RemoteProtocol(QObject):
 		self.serial = Serial(ttyfile, CONFIG_BAUDRATE,
 				     CONFIG_BYTESIZE, CONFIG_PARITY,
 				     CONFIG_STOPBITS)
+		self.__setResetLine(False)
+		QThread.msleep(100)
 		self.serial.flushInput()
 
 		self.devRestarted = False
@@ -139,6 +141,21 @@ class RemoteProtocol(QObject):
 				mainwnd.centralWidget().log.hostLog(
 					"Communication with device failed. "+\
 					"No reply to PING request.")
+
+	def __setResetLine(self, resetOn):
+		# RTS is connected to the microcontroller reset line.
+		# If RTS is logic high, the reset line is pulled low
+		# and the microcontroller is put into reset.
+		# If RTS is logic low, the microcontroller is in
+		# normal operation.
+		self.serial.setRTS(bool(resetOn))
+
+	def rebootDevice(self):
+		# Reboot the microcontroller
+		self.__setResetLine(True)
+		QThread.msleep(50)
+		self.__setResetLine(False)
+		QThread.msleep(50)
 
 	def poll(self):
 		if self.serial.inWaiting() >= MSG_SIZE:
