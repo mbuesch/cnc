@@ -440,6 +440,7 @@ class ValveIslandWidget(QGroupBox):
 	def desiredPressureChanged(self, value):
 		if not self.parent().initialized:
 			return
+		mainwnd.centralWidget().pokeUiTimer()
 		mbar = int(value * 1000)
 		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
@@ -449,6 +450,7 @@ class ValveIslandWidget(QGroupBox):
 	def desiredHysteresisChanged(self, value):
 		if not self.parent().initialized:
 			return
+		mainwnd.centralWidget().pokeUiTimer()
 		mbar = int(value * 1000)
 		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
@@ -460,6 +462,7 @@ class ValveIslandWidget(QGroupBox):
 		self.outButton.setEnabled(state == Qt.Unchecked)
 		if not self.parent().initialized:
 			return
+		mainwnd.centralWidget().pokeUiTimer()
 		flags = remote.configFlagsFetch()
 		if flags == None:
 			self.parent().log.hostLog(self.tr("Failed to fetch config flags\n"))
@@ -474,21 +477,25 @@ class ValveIslandWidget(QGroupBox):
 			self.parent().log.hostLog(self.tr("Failed to set config flags\n"))
 
 	def inValvePressed(self):
+		mainwnd.centralWidget().stopUiTimer()
 		err = remote.setValve(self.islandId, 0, 1)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to switch valve 0 ON\n"))
 
 	def inValveReleased(self):
+		mainwnd.centralWidget().startUiTimer()
 		err = remote.setValve(self.islandId, 0, 0)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to switch valve 0 OFF\n"))
 
 	def outValvePressed(self):
+		mainwnd.centralWidget().stopUiTimer()
 		err = remote.setValve(self.islandId, 1, 1)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to switch valve 1 ON\n"))
 
 	def outValveReleased(self):
+		mainwnd.centralWidget().startUiTimer()
 		err = remote.setValve(self.islandId, 1, 0)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to switch valve 1 OFF\n"))
@@ -500,6 +507,15 @@ class MainWidget(QWidget):
 
 		self.setLayout(QVBoxLayout())
 
+		self.uiLock = QCheckBox(self.tr("User interface enabled"), self)
+		self.uiLock.setCheckState(Qt.Unchecked)
+		self.connect(self.uiLock, SIGNAL("stateChanged(int)"),
+			     self.__uiLockChanged)
+		self.layout().addWidget(self.uiLock)
+		self.uiLockTimer = QTimer(self)
+		self.connect(self.uiLockTimer, SIGNAL("timeout()"),
+			     self.__uiLockTimerExpired)
+
 		self.xy = ValveIslandWidget("X/Y joints", 0, self)
 		self.layout().addWidget(self.xy)
 		self.z = ValveIslandWidget("Z joint", 1, self)
@@ -507,6 +523,33 @@ class MainWidget(QWidget):
 
 		self.log = LogBrowser(self)
 		self.layout().addWidget(self.log)
+
+		self.__uiEnable(False)
+
+	def __uiEnable(self, enabled):
+		self.xy.setEnabled(enabled)
+		self.z.setEnabled(enabled)
+
+	def stopUiTimer(self):
+		self.uiLockTimer.stop()
+
+	def startUiTimer(self):
+		self.uiLockTimer.start(10000)
+
+	def pokeUiTimer(self):
+		self.stopUiTimer()
+		self.startUiTimer()
+
+	def __uiLockChanged(self, state):
+		enabled = (state != Qt.Unchecked)
+		self.__uiEnable(enabled)
+		if enabled:
+			self.pokeUiTimer()
+		else:
+			self.stopUiTimer()
+
+	def __uiLockTimerExpired(self):
+		self.uiLock.setCheckState(Qt.Unchecked)
 
 	def initializeState(self):
 		if not opt_nofetch:
