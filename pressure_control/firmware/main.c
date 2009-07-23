@@ -44,25 +44,34 @@ struct pressure_config cfg_z;
 struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
+/* The sensor that we're currently handling. */
+static uint8_t sensor_cycle;
 
+
+/* The hardware definitions. */
 DEFINE_VALVE(z_control_valves, VALVES_2MAG, D, 6, 7, 4, 5, 0);
 DEFINE_VALVE(xy_control_valves, VALVES_1MAG, C, 2, -1, 3, -1, 400);
 static DEFINE_SENSOR(z_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
-static uint8_t sensor_cycle;
+/* Absolute maximum pressures (in mBar). */
+#define XY_MAX_PRESSURE		3500
+#define XY_MAX_HYSTERESIS	300
+#define Z_MAX_PRESSURE		1500
+#define Z_MAX_HYSTERESIS	300
+
 
 
 /* EEPROM contents */
 static struct eeprom_data EEMEM eeprom = {
 	.cfg_xy = {
-		.desired		= 2700,	/* Millibar */
-		.hysteresis		= 100,	/* Millibar */
+		.desired		= min(2900, XY_MAX_PRESSURE), /* mBar */
+		.hysteresis		= min(50, XY_MAX_HYSTERESIS), /* mBar */
 		.autoadjust_enable	= 1,
 	},
 	.cfg_z = {
-		.desired		= 1500,	/* Millibar */
-		.hysteresis		= 100,	/* Millibar */
+		.desired		= min(1100, Z_MAX_PRESSURE), /* mBar */
+		.hysteresis		= min(50, Z_MAX_HYSTERESIS), /* mBar */
 		.autoadjust_enable	= 1,
 	},
 };
@@ -103,8 +112,19 @@ void set_pressure_config(struct pressure_config *new_xy,
 	uint8_t sreg;
 
 	sreg = irq_disable_save();
+
 	memcpy(&cfg_xy, new_xy, sizeof(cfg_xy));
+	if (cfg_xy.desired > XY_MAX_PRESSURE)
+		cfg_xy.desired = XY_MAX_PRESSURE;
+	if (cfg_xy.hysteresis > XY_MAX_HYSTERESIS)
+		cfg_xy.hysteresis = XY_MAX_HYSTERESIS;
+
 	memcpy(&cfg_z, new_z, sizeof(cfg_z));
+	if (cfg_z.desired > Z_MAX_PRESSURE)
+		cfg_z.desired = Z_MAX_PRESSURE;
+	if (cfg_z.hysteresis > Z_MAX_HYSTERESIS)
+		cfg_z.hysteresis = Z_MAX_HYSTERESIS;
+
 	eeprom_store_config();
 	irq_restore(sreg);
 }
