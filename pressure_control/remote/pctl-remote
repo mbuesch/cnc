@@ -150,7 +150,7 @@ class RemoteProtocol(QObject):
 			else:
 				mainwnd.centralWidget().log.hostLog(
 					"Communication with device failed. "+\
-					"No reply to PING request.")
+					"No reply to PING request.\n")
 
 	def __setResetLine(self, resetOn):
 		# RTS is connected to the microcontroller reset line.
@@ -175,11 +175,11 @@ class RemoteProtocol(QObject):
 		if not reply:
 			mainwnd.centralWidget().log.hostLog(self.tr(
 				"Keep-alife: Device did not reply to ping "+\
-				"request. Rebooting device..."))
+				"request. Rebooting device...\n"))
 			self.rebootDevice()
 			if not mainwnd.centralWidget().fetchState():
 				mainwnd.centralWidget().log.hostLog(self.tr(
-					"Keep-alife: Failed to fetch configuration"))
+					"Keep-alife: Failed to fetch configuration\n"))
 
 	def __poll(self):
 		if self.serial.inWaiting() >= MSG_SIZE:
@@ -208,7 +208,7 @@ class RemoteProtocol(QObject):
 		mainwnd.statusBar().showMessage(self.tr("Received message %u" % id))
 		if (id == MSG_LOGMESSAGE):
 			str = self.getPayload(msg).rstrip('\0')
-			mainwnd.centralWidget().log.addText(str)
+			mainwnd.centralWidget().log.devLog(str)
 		if (id == MSG_CURRENT_PRESSURE):
 			mainwnd.centralWidget().parseCurrentPressureMsg(msg)
 		if (id == MSG_RESTARTED):
@@ -313,27 +313,43 @@ class LogBrowser(QTextEdit):
 	def __init__(self, parent=None):
 		QTextEdit.__init__(self, parent)
 
-		self.needTimeStamp = True
+		self.msgs = []
+		self.curDevMsg = ""
+
 		self.setReadOnly(1)
 		self.hostLog(self.tr("Pressure Control logging started\n"));
 
-	def addText(self, text):
-		if self.needTimeStamp:
-			self.needTimeStamp = False
-			date = QDateTime.currentDateTime()
-			text = date.toString("[hh:mm:ss] ") + text
-		self.insertPlainText(text)
-		if text[-1] in QString("\r\n"):
-			self.needTimeStamp = True
+	def __commit(self):
+		MSG_LIMIT = 100
+		if len(self.msgs) > MSG_LIMIT:
+			self.msgs = self.msgs[1:]
+			assert(len(self.msgs) == MSG_LIMIT)
+		self.setPlainText("".join(self.msgs))
 		# Scroll to the end of the log
 		vScroll = self.verticalScrollBar()
 		vScroll.setValue(vScroll.maximum())
 
+	def __dateString(self):
+		date = QDateTime.currentDateTime()
+		return str(date.toString("[hh:mm:ss] "))
+
+	def devLog(self, text):
+		text = str(text) # to python string
+		if not text:
+			return
+		if not self.curDevMsg:
+			text = self.__dateString() + "Dev: " + text
+		self.curDevMsg += text
+		if text[-1] in "\r\n":
+			self.msgs.append(self.curDevMsg)
+			self.curDevMsg = ""
+			self.__commit()
+
 	def hostLog(self, text):
-		if not self.needTimeStamp:
-			self.addText("\n")
-		self.addText("Info: ")
-		self.addText(text)
+		text = str(text) # to python string
+		text = self.__dateString() + "Host: " + text
+		self.msgs.append(text)
+		self.__commit()
 
 class PressureGauge(QWidget):
 	def __init__(self, name, min, max, units, parent):
@@ -556,16 +572,16 @@ class MainWidget(QWidget):
 			if not self.fetchState():
 				self.log.hostLog(
 					"Failed to fetch active configuration "+\
-					"from device.")
+					"from device.\n")
 		self.turnOnDevice()
 		self.initialized = True
 
 	def turnOnDevice(self):
 		error = remote.sendMessageSyncError(MSG_TURNON, 0, "")
 		if error:
-			self.log.hostLog("Failed to turn on device")
+			self.log.hostLog("Failed to turn on device\n")
 		else:
-			self.log.hostLog("Device turned on")
+			self.log.hostLog("Device turned on\n")
 
 	def shutdown(self):
 		remote.stopKeepAliveTimer()
