@@ -82,11 +82,13 @@ def usage():
 	print "-h|--help            Print this help text"
 	print "-p|--noping          Don't initially ping the device"
 	print "-f|--nofetch         Don't initially fetch the device state"
+	print "-k|--noka            Don't send keep-alive pings"
 
 def parseArgs():
 	global opt_ttyfile
 	global opt_noping
 	global opt_nofetch
+	global opt_noka
 
 	if len(sys.argv) < 2:
 		usage()
@@ -95,11 +97,12 @@ def parseArgs():
 	opt_ttyfile = sys.argv[-1]
 	opt_noping = 0
 	opt_nofetch = 0
+	opt_noka = 0
 
 	try:
 		(opts, args) = getopt.getopt(sys.argv[1:-1],
-			"hpf",
-			[ "help", "noping", "nofetch" ])
+			"hpfk",
+			[ "help", "noping", "nofetch", "noka" ])
 	except getopt.GetoptError:
 		usage()
 		sys.exit(1)
@@ -112,6 +115,8 @@ def parseArgs():
 			opt_noping = 1
 		if o in ("-f", "--nofetch"):
 			opt_nofetch = 1
+		if o in ("-k", "--noka"):
+			opt_noka = 1
 
 class RemoteProtocol(QObject):
 	def __init__(self, ttyfile):
@@ -129,8 +134,13 @@ class RemoteProtocol(QObject):
 		self.devRestarted = False
 
 		self.pollTimer = QTimer(self)
-		self.connect(self.pollTimer, SIGNAL("timeout()"), self.poll)
+		self.connect(self.pollTimer, SIGNAL("timeout()"), self.__poll)
 		self.pollTimer.start(50)
+
+		self.keepAliveTimer = QTimer(self)
+		self.connect(self.keepAliveTimer, SIGNAL("timeout()"), self.__keepAlive)
+		if not opt_noka:
+			self.keepAliveTimer.start(1000)
 
 		if not opt_noping:
 			reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
@@ -157,7 +167,21 @@ class RemoteProtocol(QObject):
 		self.__setResetLine(False)
 		QThread.msleep(50)
 
-	def poll(self):
+	def stopKeepAliveTimer(self):
+		self.keepAliveTimer.stop()
+
+	def __keepAlive(self):
+		reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
+		if not reply:
+			mainwnd.centralWidget().log.hostLog(self.tr(
+				"Keep-alife: Device did not reply to ping "+\
+				"request. Rebooting device..."))
+			self.rebootDevice()
+			if not mainwnd.centralWidget().fetchState():
+				mainwnd.centralWidget().log.hostLog(self.tr(
+					"Keep-alife: Failed to fetch configuration"))
+
+	def __poll(self):
 		if self.serial.inWaiting() >= MSG_SIZE:
 			self.parseMessage(self.serial.read(MSG_SIZE))
 		if self.devRestarted:
@@ -216,7 +240,7 @@ class RemoteProtocol(QObject):
 		"""Send a message and synchronously wait for the reply."""
 		self.pollTimer.stop()
 		self.sendMessage(id, flags, payload)
-		timeout = QDateTime.currentDateTime().addSecs(1)
+		timeout = QDateTime.currentDateTime().addMSecs(500)
 		while True:
 			if QDateTime.currentDateTime() >= timeout:
 				msg = None
@@ -501,6 +525,7 @@ class MainWidget(QWidget):
 			self.log.hostLog("Device turned on")
 
 	def shutdown(self):
+		remote.stopKeepAliveTimer()
 		if self.initialized:
 			error = remote.sendMessageSyncError(MSG_SHUTDOWN, 0, "")
 			if error != MSG_ERR_NONE:
