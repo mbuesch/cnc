@@ -22,7 +22,11 @@
 .def t1				= r17	; Temp reg 1
 .def t2				= r18	; Temp reg 2
 .def t3				= r19	; Temp reg 3
+.def tov1_clear_mask		= r25	; Holds mask to clear TOV1
 
+
+.equ CHGPUMP_IN_PIN		= PIND	; Charge pump signal from EMC
+.equ CHGPUMP_IN_BIT		= 3
 .equ MSPINDLESTOP_IN_PIN	= PIND	; Master Spindle stop signal from EMC
 .equ MSPINDLESTOP_IN_BIT	= 4
 .equ MSPINDLERUN_OUT_PORT	= PORTB	; Master Spindle enable signal to spindle Relais
@@ -51,8 +55,43 @@
 .cseg
 .org 0x000
 	rjmp reset
+.org INT1addr
+	rjmp interrupt_int1
 
 .org 0x026
+
+;*******************************************
+;*** INT1 interrupt handler              ***
+;*******************************************
+interrupt_int1:
+	; No need to save SREG. Nobody changes flags.
+	out TCNT1H, zero		; Reset the charge pump monitor timer
+	out TCNT1L, zero
+	out TIFR, tov1_clear_mask	; Clear the overflow flag
+	reti
+
+;*********************************************
+;*** Check for charge pump monitor timeout ***
+;*** Returns t0=1  =>  timeout             ***
+;***         t0=0  =>  no timeout          ***
+;*********************************************
+check_charge_pump_timeout:
+	cli						; Get charge pump monitor timer state
+	in t0, TCNT1L
+	in t1, TCNT1H
+	sei
+	in t2, TIFR
+	sbrc t2, TOV1					; Charge pump timer overflow
+	rjmp __chg_pump_timeout
+	ldi t2, 10					; Timeout, if bigger
+	cp t0, t2					; Charge pump monitor timeout?
+	cpc t1, zero
+	brsh __chg_pump_timeout
+	ldi t0, 0
+	ret
+ __chg_pump_timeout:
+	ldi t0, 1
+	ret
 
 ;*******************************************
 ;*** ENTRY POINT                         ***
@@ -78,13 +117,36 @@ reset:
 	ldi t0, 0xFF
 	out DDRC, t0
 
-	ldi t0, ((1<<MSPINDLESTOP_IN_BIT) | (1<<ESTOP_IN_BIT) | (1<<ESTOP_OUT_BIT) | (1<<ESTOPBTN_BIT))
+	ldi t0, ((1<<MSPINDLESTOP_IN_BIT) | (1<<ESTOP_IN_BIT) | (1<<ESTOP_OUT_BIT) | (1<<ESTOPBTN_BIT) | (1<<CHGPUMP_IN_BIT))
 	out PORTD, t0
 	ldi t0, (1<<ESTOP_OUT_BIT)
 	out DDRD, t0
 
+	; Initialize timer1 for charge pump monitoring
+	ldi t0, 0x00
+	out TCCR1A, t0
+	ldi t0, ((1<<CS10) | (1<<CS12))		; freq = CPU_HZ / 1024
+	out TCCR1B, t0
+	; Init the timer1 interrupt
+	in t0, MCUCR
+	sbr t0, (1<<ISC10)			; Logical change triggers IRQ
+	cbr t0, (1<<ISC11)
+	out MCUCR, t0
+	in t0, GICR
+	sbr t0, (1<<INT1)			; INT1 enable
+	out GICR, t0
+	ldi t0, (1<<INTF1)
+	out GIFR, t0
+	ldi tov1_clear_mask, (1<<TOV1)		; Init the mask to clear TOV1
+
 	; Wait for the X/Y/Z driver circuits to finish initialization
 	mdelay 1000
+
+	; Reset the charge pump monitor timer and enable interrupts
+	out TCNT1H, zero
+	out TCNT1L, zero
+	out TIFR, tov1_clear_mask
+	sei
 
 	; We start with an E-STOP condition
 	rjmp enter_estop_loop
@@ -103,6 +165,9 @@ estop_loop:
 	rjmp estop_loop
 	sbic ESTOPBTN_PIN, ESTOPBTN_BIT			; Have E-STOP from button?
 	rjmp estop_loop
+	rcall check_charge_pump_timeout			; Charge pump monitor timeout?
+	sbrc t0, 0
+	rjmp estop_loop
 
 	rjmp enter_run_loop				; We're OK to run again
 
@@ -117,6 +182,9 @@ run_loop:
 	sbic ESTOP_IN_PIN, ESTOP_IN_BIT			; Have E-STOP from EMC?
 	rjmp enter_estop_loop
 	sbic ESTOPBTN_PIN, ESTOPBTN_BIT			; Have E-STOP from button?
+	rjmp enter_estop_loop
+	rcall check_charge_pump_timeout			; Charge pump monitor timeout?
+	sbrc t0, 0
 	rjmp enter_estop_loop
 
 	in t0, MSPINDLESTOP_IN_PIN			; Update Master Spindle run state
