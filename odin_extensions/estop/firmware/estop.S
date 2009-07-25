@@ -22,6 +22,7 @@
 .def t1				= r17	; Temp reg 1
 .def t2				= r18	; Temp reg 2
 .def t3				= r19	; Temp reg 3
+.def estopcount			= r24	; E-STOP assert count
 .def tov1_clear_mask		= r25	; Holds mask to clear TOV1
 
 
@@ -151,6 +152,12 @@ reset:
 	; We start with an E-STOP condition
 	rjmp enter_estop_loop
 
+;*** HOW THE LOOPS WORK ***
+; The basic idea is that it's easy to enter the E-STOP loop,
+; but hard to leave it. So we immediately enter the E-STOP loop
+; on any E-STOP condition, but only leave it after checking the
+; conditions several times.
+
 ;*******************************************
 ;*** ESTOP - loop                        ***
 ;*** Emergency Stop is asserted          ***
@@ -159,17 +166,23 @@ enter_estop_loop:
 	cbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT	; Stop the master spindle
 	sbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Activate the joints brake
 	sbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; Assert the E-STOP output signal
-	mdelay 100					; Avoid fast bouncing between estop/run
-estop_loop:
+	mdelay 100					; Debounce E-STOP buttons
+estop_loop_reset:
+	ldi estopcount, 10
+estop_loop_again:
 	sbic ESTOP_IN_PIN, ESTOP_IN_BIT			; Have E-STOP from EMC?
-	rjmp estop_loop
+	rjmp estop_loop_reset
 	sbic ESTOPBTN_PIN, ESTOPBTN_BIT			; Have E-STOP from button?
-	rjmp estop_loop
+	rjmp estop_loop_reset
 	rcall check_charge_pump_timeout			; Charge pump monitor timeout?
 	sbrc t0, 0
-	rjmp estop_loop
+	rjmp estop_loop_reset
 
-	rjmp enter_run_loop				; We're OK to run again
+	mdelay 25
+	dec estopcount
+	breq enter_run_loop				; Count is zero. We're OK to run again
+
+	rjmp estop_loop_again				; Check the conditions again
 
 ;*******************************************
 ;*** RUN - loop                          ***
