@@ -28,9 +28,10 @@
 
 ; Hardware definitions
 .equ PROBESW_PIN		= PINC	; Probe switches input
-.equ PROBESW1_BIT		= 0
-.equ PROBESW2_BIT		= 1
-.equ PROBESW3_BIT		= 2
+.equ PROBESW1_BIT		= 0	; Trip switch 1
+.equ PROBESW2_BIT		= 1	; Trip switch 2
+.equ PROBESW3_BIT		= 2	; Trip switch 3
+.equ PROBEEN_BIT		= 3	; Probe-enable switch
 .equ PROBESW_MASK		= (1<<PROBESW1_BIT)|(1<<PROBESW2_BIT)|(1<<PROBESW3_BIT)
 .equ TRIPLED_PORT		= PORTB	; Trip LED
 .equ TRIPLED_BIT		= 0
@@ -107,7 +108,7 @@ reset:
 	ldi t0, (1<<TRIPLED_BIT)|(1<<BUZZER_BIT)
 	out DDRB, t0
 
-	ldi t0, PROBESW_MASK
+	ldi t0, PROBESW_MASK | (1<<PROBEEN_BIT)
 	out PORTC, t0
 	ldi t0, 0x00
 	out DDRC, t0
@@ -123,12 +124,33 @@ reset:
 	out TIMSK, t0
 
 	sei
+	; Start in the idle loop
+	rjmp enter_idleloop
 
-mainloop:
+;*********************************************
+;*** Idle loop - The probe is disconnected ***
+;*********************************************
+enter_idleloop:
+	cbi TRIPSIG_PORT, TRIPSIG_BIT			; Deassert trip sig to CNC
+	cbi TRIPLED_PORT, TRIPLED_BIT			; Turn off the trip LED
+	mdelay 500					; Debounce
+idleloop:
+	sbis PROBESW_PIN, PROBEEN_BIT
+	rjmp enter_probeloop
+	rjmp idleloop
+
+;*********************************************
+;*** Probe loop - The probe is connected   ***
+;*********************************************
+enter_probeloop:
+	cbi TRIPSIG_PORT, TRIPSIG_BIT			; Deassert trip sig to CNC
+	cbi TRIPLED_PORT, TRIPLED_BIT			; Turn off the trip LED
+	mdelay 500					; Debounce
+probeloop:
 	in t0, PROBESW_PIN				; Get the probe switches state
 	andi t0, PROBESW_MASK
 	cp t0, zero					; Is the probe tripped?
-	breq mainloop					; No, check again
+	breq probeloop					; No, check again
 
 	sbi TRIPSIG_PORT, TRIPSIG_BIT			; Forward trip sig to CNC
 	sbi TRIPLED_PORT, TRIPLED_BIT			; Turn on the trip LED
@@ -136,6 +158,8 @@ mainloop:
 	mdelay 20					; Debounce
 
  waitrelease:						; Wait until probe is released
+	sbic PROBESW_PIN, PROBEEN_BIT			; Is the probe still connected?
+	rjmp enter_idleloop				; No, enter idle loop
 	in t0, PROBESW_PIN				; Get the probe switches state
 	andi t0, PROBESW_MASK
 	cp t0, zero					; Is the probe still tripped?
@@ -145,7 +169,7 @@ mainloop:
 	cbi TRIPLED_PORT, TRIPLED_BIT			; Turn off the trip LED
 	mdelay 50					; Debounce
 
-	rjmp mainloop
+	rjmp probeloop
 
 ;*******************************************
 ;*** Utility functions                   ***
