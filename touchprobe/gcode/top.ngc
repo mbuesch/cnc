@@ -1,0 +1,43 @@
+%
+( CNC touch probe top half )
+( Copyright (c) 2009 Michael Buesch <mb@bu3sch.de> )
+( Licensed under the GNU General Public License version 2 or (at your option) any later version. )
+
+G17 G40 G49 G80 G90 G94 G61 G21
+G64 P0.04
+
+
+O1 sub ( D36 )
+	G0 X0 Y0 Z5
+	S1 M3
+
+	G0 Z0
+	#200 = 0
+	O11 while [ 1 ]
+		#200 = [#200 - 0.3]
+		O111 if [#200 lt -11]
+			#200 = -11
+		O111 endif
+		G1 Z#200 F10
+
+		G1 X5 F100
+		G3 X5 Y0 I-5 J0 F200
+		G1 X10
+		G3 X10 Y0 I-10 J0
+		G1 X15
+		G3 X15 Y0 I-15 J0
+		G0 X0 Y0
+
+		O112 if [#200 eq -11]
+			O11 break
+		O112 endif
+	O11 endwhile
+O1 endsub
+
+O1 call ( D36 )
+M5
+G0 Z5
+
+M30
+%
+vim: syntax=rs274ngc ts=4
