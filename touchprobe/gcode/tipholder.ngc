@@ -1,0 +1,71 @@
+%
+( CNC touch probe tip holder )
+( Required tool is a 6mm end mill )
+( Copyright [c] 2009 Michael Buesch <mb@bu3sch.de> )
+( Licensed under the GNU General Public License version 2 or [at your option] any later version. )
+
+G17 G40 G49 G80 G90 G94 G61 G21
+#100 = 0.04 ( path tolerance )
+
+
+O1 sub ( front )
+	G64 P#100
+	G0 X0 Y22 Z5
+	S1 M3
+
+	G0 Z0
+	#200 = 0
+	O11 while [ 1 ]
+		#200 = [#200 - 0.3]
+		O111 if [#200 lt -7.5]
+			#200 = -7.5
+		O111 endif
+		G0 Z#200
+
+		G1 Y14.5 F200
+		G2 X0 Y14.5 I0 J-14.5
+		G1 Y9.5
+		G2 X0 Y9.5 I0 J-9.5
+		G61
+		G1 Y7
+		G2 X0 Y7 I0 J-7
+		G64 P#100
+		G0 Y22
+
+		O112 if [#200 eq -7.5]
+			O11 break
+		O112 endif
+	O11 endwhile
+O1 endsub
+
+O2 sub ( back )
+	G61
+	G0 X0 Y19.5 Z5
+	S1 M3
+
+	G0 Z0
+	#200 = 0
+	O21 while [ 1 ]
+		#200 = [#200 - 0.3]
+		O211 if [#200 lt -2.8]
+			#200 = -2.8
+		O211 endif
+		G1 Z#200 F10
+
+		G2 X0 Y19.5 I0 J-19.5 F200
+
+		O212 if [#200 eq -2.8]
+			O21 break
+		O212 endif
+	O21 endwhile
+O2 endsub
+
+
+(O1 call) ( front )
+(O2 call) ( back )
+M5
+G0 Z5
+
+M30
+%
+vim: syntax=rs274ngc ts=4
