@@ -1,0 +1,110 @@
+%
+( CNC touch probe contact plate )
+( Required tool is a 2.4mm end mill )
+( Copyright [c] 2009 Michael Buesch <mb@bu3sch.de> )
+( Licensed under the GNU General Public License version 2 or [at your option] any later version. )
+
+G17 G40 G49 G80 G90 G94 G61 G21
+
+#100 = 20 ( Z feed )
+#101 = 150 ( XY feed )
+
+
+O1 sub
+	G61
+	G0 X0 Y0 Z5
+	S1 M3
+	G0 Z0
+	G1 Z-0.1 F#100
+	G1 X15.155 Y8.75 F#101
+	G0 Z5
+	G0 X0 Y0
+	G0 Z0
+	G1 Z-0.1 F#100
+	G1 X-15.155 Y8.75 F#101
+	G0 Z5
+	G0 X0 Y0
+	G0 Z0
+	G1 Z-0.1 F#100
+	G1 X0 Y-17.5 F#101
+	G0 Z5
+	G0 X0 Y0
+O1 endsub
+
+
+O2 sub
+	G61
+	G0 X0 Y[4.05 - 1.2] Z5
+	S1 M3
+
+	G0 Z0
+	#200 = 0
+	O21 while [ 1 ]
+		#200 = [#200 - 0.5]
+		O211 if [#200 lt -1.7]
+			#200 = -1.7
+		O211 endif
+		G1 Z#200 F#100
+
+		G3 X0 Y[4.05 - 1.2] I0 J[-4.05 + 1.2] F#101
+
+		O212 if [#200 eq -1.7]
+			O21 break
+		O212 endif
+	O21 endwhile
+	G0 Z5
+O2 endsub
+
+
+O3 sub
+	G61
+	G0 X0 Y[16.5 + 1.2] Z5
+	S1 M3
+
+	G0 Z0
+	#200 = 0
+	O31 while [ 1 ]
+		#200 = [#200 - 0.5]
+		O311 if [#200 lt -1.7]
+			#200 = -1.7
+		O311 endif
+		G1 Z#200 F#100
+
+		G2 X0 Y[16.5 + 1.2] I0 J[-16.5 - 1.2] F#101
+
+		O312 if [#200 eq -1.7]
+			O31 break
+		O312 endif
+	O31 endwhile
+	G0 Z5
+O3 endsub
+
+
+O4 sub
+	G61
+	G0 X0 Y12 Z5
+	S1 M3
+	G0 Z0.2
+	G1 Z-1.7 F#100
+	G0 Z5
+	G0 X10.392 Y-6
+	G0 Z0.2
+	G1 Z-1.7
+	G0 Z5
+	G0 X-10.392 Y-6
+	G0 Z0.2
+	G1 Z-1.7
+	G0 Z5
+O4 endsub
+
+
+O1 call
+O2 call
+O4 call
+O3 call
+M5
+G0 Z5
+
+M30
+%
+vim: syntax=rs274ngc ts=4
