@@ -16,13 +16,16 @@
 .listmac
 .include "m8def.inc"
 
+; CPU_HZ is 8MHz
 
 .def zero			= r0	; Always zero'd
+.def sregsave			= r1	; Scratch register for SREG in IRQ handlers
 .def t0				= r16	; Temp reg 0
 .def t1				= r17	; Temp reg 1
 .def t2				= r18	; Temp reg 2
 .def t3				= r19	; Temp reg 3
-.def estopcount			= r24	; E-STOP assert count
+.def econditions		= r23	; Scratch register to store E-STOP conditions
+.def sigtimer			= r24	; Input signal conditioning timer counter
 .def tov1_clear_mask		= r25	; Holds mask to clear TOV1
 
 
@@ -42,6 +45,12 @@
 .equ JOINTBRAKE_BIT		= 1
 
 
+; E-STOP conditions
+.equ ECOND_FROMEMC		= 0
+.equ ECOND_FROMBUTTON		= 1
+.equ ECOND_FROMCHGPUMP		= 2
+
+
 ; Millisecond delay
 .macro mdelay ; mdelay(milliseconds)
 	push t0
@@ -53,11 +62,20 @@
 	pop t0
 .endm
 
+; cpsne - Compare and skip if not equal - Inverted cpse
+.macro cpsne
+	cpse @0, @1
+	cpse r0, r0
+.endm
+
+
 .cseg
 .org 0x000
 	rjmp reset
 .org INT1addr
 	rjmp interrupt_int1
+.org OC2addr
+	rjmp interrupt_timer2_oc
 
 .org 0x026
 
@@ -69,6 +87,16 @@ interrupt_int1:
 	out TCNT1H, zero		; Reset the charge pump monitor timer
 	out TCNT1L, zero
 	out TIFR, tov1_clear_mask	; Clear the overflow flag
+	reti
+
+;*******************************************
+;*** TIMER2 OC interrupt handler         ***
+;*******************************************
+interrupt_timer2_oc:
+	in sregsave, SREG
+	cpse sigtimer, zero		; Decrement the counter, if it's bigger than zero.
+	dec sigtimer
+	out SREG, sregsave
 	reti
 
 ;*********************************************
@@ -123,6 +151,19 @@ reset:
 	ldi t0, (1<<ESTOP_OUT_BIT)
 	out DDRD, t0
 
+	; Initialize timer2 for input signal conditioning.
+	; Timer2 triggers the OC interrupt approx every 200uSec.
+	ldi t0, 25
+	out OCR2, t0
+	ldi t0, ((1<<WGM21) | (1<<CS22))	; freq = CPU_HZ / 64
+	out TCCR2, t0
+	ldi t0, (1<<OCF2)			; Clear IRQ flag
+	out TIFR, t0
+	in t0, TIMSK
+	ori t0, (1<<OCIE2)			; Enable OC interrupt
+	out TIMSK, t0
+	;TODO test timer freq.
+
 	; Initialize timer1 for charge pump monitoring
 	ldi t0, 0x00
 	out TCCR1A, t0
@@ -152,53 +193,65 @@ reset:
 	; We start with an E-STOP condition
 	rjmp enter_estop_loop
 
+
 ;*** HOW THE LOOPS WORK ***
-; The basic idea is that it's easy to enter the E-STOP loop,
-; but hard to leave it. So we immediately enter the E-STOP loop
-; on any E-STOP condition, but only leave it after checking the
-; conditions several times.
+; The basic idea is that it's easier to enter the E-STOP loop than
+; it is to leave it. So we enter it after checking the conditions
+; for a few microseconds, but only leave it after checking the
+; conditions for several milliseconds.
 
 ;*******************************************
 ;*** ESTOP - loop                        ***
 ;*** Emergency Stop is asserted          ***
 ;*******************************************
+.equ ESTOP_SIGTIMER = 255	; time = ESTOP_SIGTIMER * 200uS
 enter_estop_loop:
 	cbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT	; Stop the master spindle
 	sbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Activate the joints brake
 	sbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; Assert the E-STOP output signal
 	mdelay 100					; Debounce E-STOP buttons
-estop_loop_reset:
-	ldi estopcount, 10
-estop_loop_again:
+	ldi sigtimer, ESTOP_SIGTIMER			; Reset the conditioning timer counter.
+estop_loop:
+	clr econditions
 	sbic ESTOP_IN_PIN, ESTOP_IN_BIT			; Have E-STOP from EMC?
-	rjmp estop_loop_reset
+	ori econditions, (1<<ECOND_FROMEMC)
 	sbic ESTOPBTN_PIN, ESTOPBTN_BIT			; Have E-STOP from button?
-	rjmp estop_loop_reset
+	ori econditions, (1<<ECOND_FROMBUTTON)
 	rcall check_charge_pump_timeout			; Charge pump monitor timeout?
 	sbrc t0, 0
-	rjmp estop_loop_reset
+	ori econditions, (1<<ECOND_FROMCHGPUMP)
 
-	mdelay 25
-	dec estopcount
-	breq enter_run_loop				; Count is zero. We're OK to run again
+	cpse econditions, zero				; If we have an E-STOP condition...
+	ldi sigtimer, ESTOP_SIGTIMER			; ...reset the conditioning timer counter.
+	cpsne sigtimer, zero				; If the conditioning timer counter is zero...
+	rjmp enter_run_loop				; ...enter RUN state.
 
-	rjmp estop_loop_again				; Check the conditions again
+	rjmp estop_loop
+
 
 ;*******************************************
 ;*** RUN - loop                          ***
 ;*** Emergency Stop is not asserted      ***
 ;*******************************************
+.equ RUN_SIGTIMER = 5	; time = RUN_SIGTIMER * 200uS
 enter_run_loop:
 	cbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Deactivate the joints brake
 	cbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; De-assert the E-STOP output signal
+	ldi sigtimer, RUN_SIGTIMER			; Reset the conditioning timer counter.
 run_loop:
+	clr econditions
 	sbic ESTOP_IN_PIN, ESTOP_IN_BIT			; Have E-STOP from EMC?
-	rjmp enter_estop_loop
+	ori econditions, (1<<ECOND_FROMEMC)
 	sbic ESTOPBTN_PIN, ESTOPBTN_BIT			; Have E-STOP from button?
-	rjmp enter_estop_loop
+	ori econditions, (1<<ECOND_FROMBUTTON)
 	rcall check_charge_pump_timeout			; Charge pump monitor timeout?
 	sbrc t0, 0
-	rjmp enter_estop_loop
+	rjmp enter_estop_loop				; Immediately enter E-STOP state for chgpump timeout
+
+	cpsne econditions, zero				; If we don't have an E-STOP condition...
+	ldi sigtimer, RUN_SIGTIMER			; ...reset the conditioning timer counter.
+	cpsne sigtimer, zero				; If the conditioning timer counter is zero...
+	rjmp enter_estop_loop				; ...enter E-STOP.
 
 	in t0, MSPINDLESTOP_IN_PIN			; Update Master Spindle run state
 	sbrc t0, MSPINDLESTOP_IN_BIT
