@@ -162,7 +162,6 @@ reset:
 	in t0, TIMSK
 	ori t0, (1<<OCIE2)			; Enable OC interrupt
 	out TIMSK, t0
-	;TODO test timer freq.
 
 	; Initialize timer1 for charge pump monitoring
 	ldi t0, 0x00
