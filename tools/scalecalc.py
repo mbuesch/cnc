@@ -42,7 +42,7 @@ except (ValueError, getopt.GetoptError):
 	sys.exit(1)
 
 for microsteps in range(1, range_max + 1):
-  print "%d microsteps  =>  SCALE=%f" %\
-    (microsteps,
-     (float(microsteps) / float(degree_per_fullstep))
-     * 360.0 * (1.0 / float(units_per_rev)))
+	scale = (float(microsteps) / float(degree_per_fullstep)) *\
+		360.0 * (1.0 / float(units_per_rev))
+
+	print "%d microsteps  =>  SCALE=%f" % (microsteps, scale)
