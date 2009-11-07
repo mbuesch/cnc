@@ -35,6 +35,14 @@ install: all
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:w:$(HEX)
 
+dumphex:
+	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
+	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:r:$(HEX).dump:i
+
+dumpbin:
+	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
+	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:r:$(NAME).S.bin.dump:r
+
 avrdude:
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -t
@@ -51,4 +59,4 @@ writefuse:
 	 -U hfuse:w:$(HFUSE):m
 
 clean:
-	-rm -f *~ *.cof *.hex *.obj *.bin *.bak *.cache.* *.o tabgen tables.S
+	-rm -f *~ *.cof *.hex *.obj *.bin *.bak *.cache.* *.o *.dump tabgen tables.S
