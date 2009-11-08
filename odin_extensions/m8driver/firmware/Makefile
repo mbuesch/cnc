@@ -1,14 +1,17 @@
 # The number of microsteps
-STEPS		?= 25
+STEPS		= 25
 
-ASM		?= avra
-AVRDUDE		?= avrdude
-AVRDUDE_ARCH	?= m8
-AVRDUDE_SPEED	?= 1
-PROGRAMMER	?= avrisp2
-PROGPORT	?= usb
-CC		?= gcc
-CFLAGS		?= -O2 --std=c99 -Wall
+ASM		= avra
+ASMFLAGS	=
+AVRDUDE		= avrdude
+AVRDUDE_ARCH	= m8
+AVRDUDE_SPEED	= 1
+PROGRAMMER	= avrisp2
+PROGPORT	= usb
+CC		= gcc
+CFLAGS		= -O2 --std=c99 -Wall
+
+DEBUG		= 0
 
 LFUSE	= 0xE0
 HFUSE	= 0xD9
@@ -16,6 +19,10 @@ HFUSE	= 0xD9
 
 NAME	= m8driver
 HEX	= $(NAME).S.hex
+
+ifneq ($(DEBUG),0)
+ASMFLAGS += --define DEBUG
+endif
 
 all: $(HEX)
 
@@ -26,7 +33,7 @@ tables.S: tabgen
 	./tabgen $(STEPS) > tables.S
 
 $(HEX): m8driver.S m8def.inc tables.S
-	$(ASM) m8driver.S
+	$(ASM) $(ASMFLAGS) m8driver.S
 	-srec_cat $(HEX) -Intel -Output $(NAME).S.bin -Binary
 	@echo
 	@echo "Successfully built the firmware"

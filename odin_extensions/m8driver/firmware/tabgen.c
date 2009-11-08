@@ -46,12 +46,11 @@ static int gen_lmd_tab(unsigned int nr_steps)
 {
 	double pos;
 	double s;
-	unsigned int lmd1, lmd2, polarity;
+	unsigned int lmd1, lmd2;
 	unsigned int count;
-	int row, col;
 	unsigned char *buf;
 
-	buf = malloc(nr_steps * 2 * 2);
+	buf = malloc(nr_steps * 2);
 	if (!buf) {
 		fprintf(stderr, "Out of memory.\n");
 		return 1;
@@ -61,75 +60,30 @@ static int gen_lmd_tab(unsigned int nr_steps)
 	/* sin() takes radians as arg. pi rad == 180deg */
 	for (count = 0; count < nr_steps * 2; count++) {
 		pos = M_PI / (nr_steps * 2) * count;
-		polarity = 0;
 
 		s = sin(pos);
 		s = s * 0xF;
 		lmd1 = (unsigned int)round(s) & 0xF;
-		polarity |= 1;
 
 		s = cos(pos);
 		if (s < 0)
 			s = -s;
-		else
-			polarity |= 2;
 		s = s * 0xF;
 		lmd2 = (unsigned int)round(s) & 0xF;
 		lmd2 <<= 4;
 
-		buf[count * 2] = lmd1 | lmd2;
-		buf[count * 2 + 1] = polarity;
+		buf[count] = lmd1 | lmd2;
 	}
-
-	/* Print a diagram. */
-	for (row = 15; row >= -15; row--) {
-		printf("; %3d | ", row);
-		for (col = 0; col < nr_steps * 2; col++) {
-			char c = ' ';
-			int l1, l2;
-			unsigned char polarity;
-
-			l1 = buf[col * 2] & 0xF;
-			l2 = buf[col * 2] >> 4;
-			polarity = buf[col * 2 + 1];
-			if (!(polarity & 1))
-				l1 = -l1;
-			if (!(polarity & 2))
-				l2 = -l2;
-			if (l1 == row)
-				c = '&';
-			if (l2 == row)
-				c = '$';
-			putchar(c);
-		}
-		putchar('\n');
-	}
-	printf(";     L-");
-	for (col = 0; col < nr_steps * 2; col++)
-		putchar('-');
-	printf("\n;       ");
-	for (col = 0; col < nr_steps * 2; col += 4)
-		printf("%-4u", col);
-	putchar('\n');
 
 	/* Print the lookup table. */
 	printf("steptable:\n");
 	for (count = 0; count < nr_steps * 2; count++) {
-		unsigned int a, b;
-		int l1, l2;
-
-		a = buf[count * 2];
-		b = buf[count * 2 + 1];
-		l1 = a & 0xF;
-		if (!(b & 1))
-			l1 = -l1;
-		l2 = a >> 4;
-		if (!(b & 2))
-			l2 = -l2;
-		printf(".db 0x%02X, 0x%02X    ; LMD1 = %3d,  LMD2 = %3d\n",
-		       a, b, l1, l2);
+		if (count % 8 == 0)
+			printf("%s.db 0x%02X", count ? "\n" : "", buf[count]);
+		else
+			printf(", 0x%02X", buf[count]);
 	}
-	printf("\n");
+	printf("\n\n");
 
 	free(buf);
 
@@ -139,35 +93,37 @@ static int gen_lmd_tab(unsigned int nr_steps)
 int main(int argc, char **argv)
 {
 	unsigned long nr_steps;
-	unsigned int i;
-	char buf[32];
+	int err;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s NR_OF_STEPS\n", argv[0]);
 		return 1;
 	}
 	nr_steps = strtoul(argv[1], NULL, 10);
-	if (nr_steps < 1 || nr_steps > 60) {
-		fprintf(stderr, "Please select a step count between 1 and 60\n");
+	if (nr_steps < 4 || nr_steps > 60) {
+		fprintf(stderr, "Please select a step count between 4 and 60\n");
 		return 1;
 	}
 
 	printf("; THIS FILE IS GENERATED. DO NOT EDIT.\n");
+	printf("\n\n");
+	printf(".equ NR_STEPS=%lu\n", nr_steps);
 	printf("\n");
-	printf(".equ NR_STEPS = %lu\n", nr_steps);
-	snprintf(buf, sizeof(buf), "%02lu", nr_steps);
-	printf(".equ NR_STEPS_ASCII_0 = %u ; ASCII %c\n",
-	       (unsigned int)buf[0], (unsigned int)buf[0]);
-	printf(".equ NR_STEPS_ASCII_1 = %u ; ASCII %c\n",
-	       (unsigned int)buf[1], (unsigned int)buf[1]);
-	snprintf(buf, sizeof(buf), "%04u.%02u.%02u",
-		 COMPILE_YEAR, COMPILE_MONTH, COMPILE_DAY);
-	for (i = 0; i < 10; i++) {
-		printf(".equ BDATE%u = %u ; ASCII %c\n",
-		       i, (unsigned int)buf[i], (unsigned int)buf[i]);
-	}
-	printf(".cseg\n");
+	printf("cseg:\n");
+
+	err = gen_lmd_tab(nr_steps);
+	if (err)
+		return 1;
+
+	printf("; For reference store the build parameters in the binary image\n");
+	printf(".db 0,0,0,0\n");
+	printf(".db \"NR_STEPS=%lu\"%s\n", nr_steps, ((nr_steps > 9) ? ",0" : ""));
+	printf(".db 0,0,0,0\n");
+	printf(".db \"BUILD_DATE=%04u.%02u.%02u\",0\n",
+	       (unsigned int)COMPILE_YEAR,
+	       (unsigned int)COMPILE_MONTH,
+	       (unsigned int)COMPILE_DAY);
 	printf("\n");
 
-	return gen_lmd_tab(nr_steps);
+	return 0;
 }
