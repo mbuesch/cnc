@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 	printf("\n\n");
 	printf(".equ NR_STEPS=%lu\n", nr_steps);
 	printf("\n");
-	printf("cseg:\n");
+	printf(".cseg\n");
 
 	err = gen_lmd_tab(nr_steps);
 	if (err)
