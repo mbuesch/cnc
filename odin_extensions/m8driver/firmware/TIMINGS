@@ -1,0 +1,19 @@
+*** Timings of the m8driver ***
+
+These timings are based on a crystal frequency of 16MHz.
+
+
+Name        | Value in nanoseconds  | Description
+===============================================================================
+steplen     | < 300                 | Minimum length of a step "high" pulse.
+            |                       |
+steptime    | < 2000                | Time required to process one step.
+            |                       | So steps must be separated by this time,
+            |                       | at least.
+            |                       |
+dirsetup    | < 100                 | Minimum spacing between a direction
+            |                       | change and a step pulse.
+            |                       |
+dirhold     | < 0                   | Minimum time between end of step pulse
+            |                       | and a direction change.
+
