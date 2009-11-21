@@ -83,12 +83,14 @@ def usage():
 	print "-p|--noping          Don't initially ping the device"
 	print "-f|--nofetch         Don't initially fetch the device state"
 	print "-k|--noka            Don't send keep-alive pings"
+	print "-l|--log FILE        Log status information to FILE"
 
 def parseArgs():
 	global opt_ttyfile
 	global opt_noping
 	global opt_nofetch
 	global opt_noka
+	global opt_logfile
 
 	if len(sys.argv) < 2:
 		usage()
@@ -98,11 +100,12 @@ def parseArgs():
 	opt_noping = 0
 	opt_nofetch = 0
 	opt_noka = 0
+	opt_logfile = None
 
 	try:
 		(opts, args) = getopt.getopt(sys.argv[1:-1],
-			"hpfk",
-			[ "help", "noping", "nofetch", "noka" ])
+			"hpfkl:",
+			[ "help", "noping", "nofetch", "noka", "log=", ])
 	except getopt.GetoptError:
 		usage()
 		sys.exit(1)
@@ -117,6 +120,36 @@ def parseArgs():
 			opt_nofetch = 1
 		if o in ("-k", "--noka"):
 			opt_noka = 1
+		if o in ("-l", "--log"):
+			opt_logfile = v
+
+class Log(QObject):
+	def __init__(self, logfile):
+		QObject.__init__(self)
+		self.fd = None
+		if not logfile:
+			return
+		try:
+			self.fd = file(logfile, "w+b")
+		except IOError, e:
+			print "Failed to open logfile %s: %s" % (logfile, e.strerror)
+			sys.exit(1)
+		self.write("X/Y,X/Y lower threshold,X/Y upper threshold,"+\
+			   "Z,Z lower threshold,Z upper threshold,\n")
+
+	def write(self, message):
+		if not self.fd:
+			return
+		self.fd.write(message)
+		self.fd.flush()
+
+	def logPressure(self, xy, xy_desired, xy_hyst, z, z_desired, z_hyst):
+		xy_lower = xy_desired - xy_hyst
+		xy_upper = xy_desired + xy_hyst
+		z_lower = z_desired - z_hyst
+		z_upper = z_desired + z_hyst
+		self.write("%d,%d,%d,%d,%d,%d,\n" %\
+			(xy, xy_lower, xy_upper, z, z_lower, z_upper))
 
 class RemoteProtocol(QObject):
 	def __init__(self, ttyfile):
@@ -462,6 +495,9 @@ class ValveIslandWidget(QGroupBox):
 		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to change pressure. Error=%u\n" % err))
+	
+	def getDesiredPressure(self):
+		return int(self.pressureSpin.value() * 1000)
 
 	def desiredHysteresisChanged(self, value):
 		if not self.parent().initialized:
@@ -472,6 +508,9 @@ class ValveIslandWidget(QGroupBox):
 		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to change hysteresis. Error=%u\n" % err))
+
+	def getHysteresis(self):
+		return int(self.hystSpin.value() * 1000)
 
 	def autoadjustChanged(self, state):
 		self.inButton.setEnabled(state == Qt.Unchecked)
@@ -643,6 +682,10 @@ class MainWidget(QWidget):
 		z_mbar = ord(msg[2]) | (ord(msg[3]) << 8)
 		self.xy.gauge.setValue(float(xy_mbar) / 1000)
 		self.z.gauge.setValue(float(z_mbar) / 1000)
+		log.logPressure(xy_mbar, self.xy.getDesiredPressure(),
+				self.xy.getHysteresis(),
+				z_mbar, self.z.getDesiredPressure(),
+				self.z.getHysteresis())
 
 class MainWindow(QMainWindow):
 	def __init__(self, parent=None):
@@ -678,12 +721,14 @@ def main():
 	global remote
 	global mainwnd
 	global app
+	global log
 
 	mainwnd = None
 
 	app = QApplication(sys.argv)
 	parseArgs()
 
+	log = Log(opt_logfile)
 	mainwnd = MainWindow()
 	remote = RemoteProtocol(opt_ttyfile)
 
