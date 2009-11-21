@@ -44,10 +44,10 @@ struct pressure_config {
 struct pressure_state {
 	/* Sensing and adjustment logic enabled? */
 	bool device_enabled;
-	/* The last measured pressure (in mBar).
+	/* The sum of the last measured pressures (in mBar).
 	 * It depends on sensor_cycle which valves this
 	 * value belongs to. */
-	uint16_t measured_mbar;
+	uint32_t measured_mbar;
 	/* The current pressure for the individual valves */
 	uint16_t measured_mbar_xy;
 	uint16_t measured_mbar_z;
@@ -57,6 +57,8 @@ struct pressure_state {
 	/* True, if the current pressure value needs checking against
 	 * the desired pressure config. */
 	bool needs_checking;
+	/* The current count of lowlevel ADC measurements. */
+	uint8_t nr_adc_measurements;
 };
 
 void get_pressure_config(struct pressure_config *xy,

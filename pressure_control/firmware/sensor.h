@@ -27,6 +27,7 @@ struct sensor {
 	}
 
 void sensor_trigger_read(struct sensor *s);
+void sensor_retrigger(void);
 void sensor_init(struct sensor *s);
 
 /* Callback for sensor value reporting. */

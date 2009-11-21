@@ -72,6 +72,12 @@ void sensor_trigger_read(struct sensor *s)
 	adc_trigger(s->adc_mux, 1);
 }
 
+void sensor_retrigger(void)
+{
+	/* Retrigger an ADC conversion on the currently active sensor. */
+	adc_trigger(active_sensor->adc_mux, 1);
+}
+
 void sensor_init(struct sensor *s)
 {
 	mdelay(20); /* Warm-up time */

@@ -60,6 +60,10 @@ static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 #define Z_MAX_PRESSURE		1500
 #define Z_MAX_HYSTERESIS	300
 
+/* Report hysteresis (in mBar).
+ * Don't report changes lower than this (With some exceptions). */
+#define REPORT_HYSTERESIS	25
+
 
 
 /* EEPROM contents */
@@ -142,11 +146,17 @@ void get_pressure_state(struct pressure_state *ret)
  * Called in IRQ context. */
 void sensor_result(struct sensor *s, uint16_t mbar)
 {
-	/* Defer processing of the value to the mainloop, so we can do it with
-	 * interrupts enabled. */
-	state.measured_mbar = mbar;
-	mb();
-	state.needs_checking = 1;
+	state.measured_mbar += mbar;
+
+	if (++state.nr_adc_measurements >= 8) {
+		state.nr_adc_measurements = 0;
+		state.measured_mbar /= 8;
+		mb();
+		/* Defer processing of the value to the mainloop, so we can
+		 * do it with interrupts enabled. */
+		state.needs_checking = 1;
+	} else
+		sensor_retrigger();
 }
 
 jiffies_t get_jiffies(void)
@@ -206,7 +216,7 @@ static void do_check_pressure(struct valves *valves,
 			 * keep on doing this to reach the desired center value
 			 * more closely. */
 		} else {
-			/* We're within half the hysteresis.
+			/* We're within quarter of the hysteresis.
 			 * The pressure is OK. Make sure the valves are
 			 * all idle. */
 			report_change = (cur_state != VALVES_IDLE);
@@ -222,7 +232,7 @@ static void do_check_pressure(struct valves *valves,
 			valves_disarm_auto_idle(valves);
 		}
 	}
-	if (abs((int32_t)mbar - (int32_t)(*reported_mbar)) >= 40)
+	if (abs((int32_t)mbar - (int32_t)(*reported_mbar)) >= REPORT_HYSTERESIS)
 		report_change = 1;
 	if (report_change) {
 		remote_pressure_change_notification(state.measured_mbar_xy,
@@ -334,7 +344,7 @@ int main(void)
 			if (++sensor_cycle == __NR_SENSOR_CYCLE)
 				sensor_cycle = 0;
 			state.needs_checking = 0;
-			next_sensor_trigger = now + msec_to_jiffies(20);
+			next_sensor_trigger = now + msec_to_jiffies(5);
 			mb();
 			need_sensor_trigger = 1;
 		}
@@ -343,6 +353,7 @@ int main(void)
 			/* It's time for triggering another
 			 * sensor measurement. */
 			need_sensor_trigger = 0;
+			state.measured_mbar = 0;
 			switch (sensor_cycle) {
 			case SENSOR_CYCLE_XY:
 				sensor_trigger_read(&xy_control_sensor);
