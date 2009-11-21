@@ -13,6 +13,46 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+Connection ~ 2150 1200
+Wire Wire Line
+	2150 1200 2150 900 
+Wire Wire Line
+	2150 900  2000 900 
+Connection ~ 2150 1900
+Wire Wire Line
+	2150 1900 2150 1600
+Wire Wire Line
+	2150 1600 2000 1600
+Connection ~ 1450 2600
+Wire Wire Line
+	1450 2600 1450 2300
+Wire Wire Line
+	1450 2300 1600 2300
+Connection ~ 2150 3300
+Wire Wire Line
+	2150 3300 2150 3000
+Wire Wire Line
+	2150 3000 2000 3000
+Connection ~ 2150 5400
+Wire Wire Line
+	2150 5400 2150 5100
+Wire Wire Line
+	2150 5100 2000 5100
+Connection ~ 2150 6100
+Wire Wire Line
+	2150 6100 2150 5800
+Wire Wire Line
+	2150 5800 2000 5800
+Connection ~ 1450 6800
+Wire Wire Line
+	1450 6800 1450 6500
+Wire Wire Line
+	1450 6500 1600 6500
+Connection ~ 2150 7500
+Wire Wire Line
+	2150 7500 2150 7200
+Wire Wire Line
+	2150 7200 2000 7200
 Wire Wire Line
 	11150 3600 11150 5350
 Wire Wire Line
@@ -307,6 +347,118 @@ Wire Wire Line
 	10500 5350 10500 5700
 Wire Wire Line
 	10950 3200 11100 3200
+Wire Wire Line
+	1600 7200 1450 7200
+Wire Wire Line
+	1450 7200 1450 7500
+Connection ~ 1450 7500
+Wire Wire Line
+	2000 6500 2150 6500
+Wire Wire Line
+	2150 6500 2150 6800
+Connection ~ 2150 6800
+Wire Wire Line
+	1600 5800 1450 5800
+Wire Wire Line
+	1450 5800 1450 6100
+Connection ~ 1450 6100
+Wire Wire Line
+	1600 5100 1450 5100
+Wire Wire Line
+	1450 5100 1450 5400
+Connection ~ 1450 5400
+Wire Wire Line
+	1600 3000 1450 3000
+Wire Wire Line
+	1450 3000 1450 3300
+Connection ~ 1450 3300
+Wire Wire Line
+	2000 2300 2150 2300
+Wire Wire Line
+	2150 2300 2150 2600
+Connection ~ 2150 2600
+Wire Wire Line
+	1600 1600 1450 1600
+Wire Wire Line
+	1450 1600 1450 1900
+Connection ~ 1450 1900
+Wire Wire Line
+	1600 900  1450 900 
+Wire Wire Line
+	1450 900  1450 1200
+Connection ~ 1450 1200
+$Comp
+L DIODE D?
+U 1 1 4B07F796
+P 1800 7200
+F 0 "D?" H 1800 7300 40  0000 C C
+F 1 "1N4001" H 1800 7100 40  0000 C C
+	1    1800 7200
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F78F
+P 1800 6500
+F 0 "D?" H 1800 6600 40  0000 C C
+F 1 "1N4001" H 1800 6400 40  0000 C C
+	1    1800 6500
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F788
+P 1800 5800
+F 0 "D?" H 1800 5900 40  0000 C C
+F 1 "1N4001" H 1800 5700 40  0000 C C
+	1    1800 5800
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F76F
+P 1800 5100
+F 0 "D?" H 1800 5200 40  0000 C C
+F 1 "1N4001" H 1800 5000 40  0000 C C
+	1    1800 5100
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F767
+P 1800 3000
+F 0 "D?" H 1800 3100 40  0000 C C
+F 1 "1N4001" H 1800 2900 40  0000 C C
+	1    1800 3000
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F6CB
+P 1800 2300
+F 0 "D?" H 1800 2400 40  0000 C C
+F 1 "1N4001" H 1800 2200 40  0000 C C
+	1    1800 2300
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F6C1
+P 1800 1600
+F 0 "D?" H 1800 1700 40  0000 C C
+F 1 "1N4001" H 1800 1500 40  0000 C C
+	1    1800 1600
+	-1   0    0    1   
+$EndComp
+$Comp
+L DIODE D?
+U 1 1 4B07F6B1
+P 1800 900
+F 0 "D?" H 1800 1000 40  0000 C C
+F 1 "1N4001" H 1800 800 40  0000 C C
+	1    1800 900 
+	-1   0    0    1   
+$EndComp
 $Comp
 L DIODE D1
 U 1 1 4A6895BC
@@ -480,7 +632,7 @@ F 1 "Z pressure sensor" V 5650 6550 60  0000 C C
 	1    5600 6550
 	0    1    1    0   
 $EndComp
-Text Notes 600  5000 0    60   ~
+Text Notes 600  4850 0    60   ~
 Z Inlet/outlet valve control
 $Comp
 L +24V #PWR8
@@ -832,7 +984,7 @@ F 1 "47p" H 5200 800 50  0000 L C
 	1    5150 900 
 	0    1    1    0   
 $EndComp
-Text Notes 600  800  0    60   ~
+Text Notes 550  700  0    60   ~
 X/Y Inlet/outlet valve control
 $Comp
 L +24V #PWR4
