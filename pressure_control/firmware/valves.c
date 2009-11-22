@@ -43,7 +43,11 @@ void valve0_switch(struct valves *v, uint8_t state)
 		} else if (state == VALVE_STATE_OPEN) {
 			MMIO8(v->close0.port) &= ~(v->close0.bitmask);
 			MMIO8(v->open0.port) |= v->open0.bitmask;
-		}
+		} else if (state == VALVE_STATE_IDLE) {
+			MMIO8(v->open0.port) &= ~(v->open0.bitmask);
+			MMIO8(v->close0.port) &= ~(v->close0.bitmask);
+		} else
+			BUG_ON(1);
 		break;
 	}
 }
@@ -64,7 +68,11 @@ void valve1_switch(struct valves *v, uint8_t state)
 		} else if (state == VALVE_STATE_OPEN) {
 			MMIO8(v->close1.port) &= ~(v->close1.bitmask);
 			MMIO8(v->open1.port) |= v->open1.bitmask;
-		}
+		} else if (state == VALVE_STATE_IDLE) {
+			MMIO8(v->open1.port) &= ~(v->open1.bitmask);
+			MMIO8(v->close1.port) &= ~(v->close1.bitmask);
+		} else
+			BUG_ON(1);
 		break;
 	}
 }
