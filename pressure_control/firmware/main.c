@@ -67,7 +67,7 @@ static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
 /* Report hysteresis (in mBar).
  * Don't report changes lower than this (With some exceptions). */
-#define REPORT_HYSTERESIS	25
+#define REPORT_HYSTERESIS	15
 
 
 
@@ -153,9 +153,9 @@ void sensor_result(struct sensor *s, uint16_t mbar)
 {
 	state.measured_mbar += mbar;
 
-	if (++state.nr_adc_measurements >= 8) {
+	if (++state.nr_adc_measurements >= 4) {
 		state.nr_adc_measurements = 0;
-		state.measured_mbar /= 8;
+		state.measured_mbar /= 4;
 		mb();
 		/* Defer processing of the value to the mainloop, so we can
 		 * do it with interrupts enabled. */
