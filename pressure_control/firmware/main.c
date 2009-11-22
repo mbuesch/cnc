@@ -54,7 +54,7 @@ DEFINE_VALVE_2MAG(z_control_valves,
 		  D,4,	D,5,
 		  0);
 DEFINE_VALVE_1MAG(xy_control_valves,
-		  C,2,	C,3,
+		  D,3,	D,2,
 		  400);
 static DEFINE_SENSOR(z_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
