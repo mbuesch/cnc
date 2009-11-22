@@ -35,9 +35,10 @@ CONFIG_PARITY			= PARITY_NONE
 CONFIG_STOPBITS			= 2
 
 # The size of one message
-MSG_SIZE			= 12
-MSG_PAYLOAD_SIZE		= 8
+MSG_SIZE			= 7
+MSG_PAYLOAD_SIZE		= 4
 # Message IDs
+MSG_ID_MASK			= 0x7F
 MSG_INVALID			= 0
 MSG_ERROR			= 1
 MSG_LOGMESSAGE			= 2
@@ -58,6 +59,8 @@ MSG_SET_VALVE			= 16
 MSG_RESTARTED			= 17
 MSG_SHUTDOWN			= 18
 MSG_TURNON			= 19
+# Message flags
+MSG_FLAG_REQ_ERRCODE		= 0x80
 # Message error codes
 MSG_ERR_NONE			= 0 # No error
 MSG_ERR_CHKSUM			= 1 # Checksum error
@@ -65,8 +68,6 @@ MSG_ERR_NOCMD			= 2 # Unknown command
 MSG_ERR_BUSY			= 3 # Busy
 MSG_ERR_INVAL			= 4 # Invalid argument
 MSG_ERR_NOREPLY			= -1 # internal. Not sent over wire.
-# Message flags
-MSG_FLAG_REQ_ERRCODE		= 0
 # Config flags
 CFG_FLAG_AUTOADJUST_ENABLE	= 0
 
@@ -237,7 +238,7 @@ class RemoteProtocol(QObject):
 	def parseMessage(self, msg):
 		if not self.checksumMessage(msg):
 			return
-		id = ord(msg[0])
+		id = ord(msg[0]) & MSG_ID_MASK
 		mainwnd.statusBar().showMessage(self.tr("Received message %u" % id))
 		if (id == MSG_LOGMESSAGE):
 			str = self.getPayload(msg).rstrip('\0')
@@ -248,13 +249,13 @@ class RemoteProtocol(QObject):
 			self.devRestarted = True
 
 	def getPayload(self, msg):
-		return msg[2:-2]
+		return msg[1:-2]
 
 	def sendMessage(self, id, flags, payload):
 		"""Send a message"""
 		assert(len(payload) <= MSG_PAYLOAD_SIZE)
 		# Create the header
-		msg = "%c%c" % (id, flags)
+		msg = "%c" % (id | flags)
 		# Add the payload
 		msg += payload
 		# Pad the payload up to the constant size
@@ -294,7 +295,7 @@ class RemoteProtocol(QObject):
 
 	def sendMessageSyncError(self, id, flags, payload):
 		"""Sends a message and synchronously waits for the MSG_ERROR reply."""
-		flags |= (1 << MSG_FLAG_REQ_ERRCODE)
+		flags |= MSG_FLAG_REQ_ERRCODE
 		reply = self.sendMessageSyncReply(id, flags, payload, MSG_ERROR)
 		if not reply:
 			return MSG_ERR_NOREPLY
@@ -306,15 +307,12 @@ class RemoteProtocol(QObject):
 		if not reply:
 			return None
 		reply = remote.getPayload(reply)
-		xy = ord(reply[0]) | (ord(reply[1]) << 8) | \
-			(ord(reply[2]) << 16) | (ord(reply[3]) << 24)
-		z = ord(reply[4]) | (ord(reply[5]) << 8) | \
-			(ord(reply[6]) << 16) | (ord(reply[7]) << 24)
+		xy = ord(reply[0])
+		z = ord(reply[1])
 		return (xy, z)
 
 	def configFlagsSet(self, island, flags):
-		data = "%c%c%c%c%c" % (island, (flags & 0xFF), ((flags >> 8) & 0xFF),
-				     ((flags >> 16) & 0xFF), ((flags >> 24) & 0xFF))
+		data = "%c%c" % (island, flags)
 		err = self.sendMessageSyncError(MSG_SET_CONFIG_FLAGS, 0, data)
 		return err
 

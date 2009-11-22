@@ -27,6 +27,10 @@ enum remote_message_id {
 	MSG_RESTARTED,
 	MSG_SHUTDOWN,
 	MSG_TURNON,
+
+
+	MSG_ID_MASK		= 0x7F,
+	MSG_FLAG_REQ_ERRCODE	= 0x80,
 };
 
 enum remote_message_error {
@@ -37,24 +41,19 @@ enum remote_message_error {
 	MSG_ERR_INVAL,		/* Invalid argument */
 };
 
-enum remote_message_flags {
-	MSG_FLAG_REQ_ERRCODE = 0,
-};
-
 enum remote_message_config_flags {
 	CFG_FLAG_AUTOADJUST_ENABLE = 0,
 };
 
 struct remote_message {
 	uint8_t id;
-	uint8_t flags;
 
 	union {
 		struct {
 			uint8_t code;
 		} __attribute__((packed)) error;
 		struct {
-			char str[8];
+			char str[4];
 		} __attribute__((packed)) logmessage;
 		struct {
 			uint16_t mbar[2];
@@ -64,11 +63,11 @@ struct remote_message {
 			uint16_t mbar;
 		} __attribute__((packed)) setpressure;
 		struct {
-			uint32_t flags[2];
+			uint8_t flags[2];
 		} __attribute__((packed)) config;
 		struct {
 			uint8_t island;	/* Valve island */
-			uint32_t flags;
+			uint8_t flags;
 		} __attribute__((packed)) setconfig;
 		struct {
 			uint8_t island;	/* Valve island */
@@ -76,7 +75,7 @@ struct remote_message {
 			uint8_t state;
 		} __attribute__((packed)) valve;
 
-		uint8_t __padding[8];
+		uint8_t __padding[4];
 	} __attribute__((packed));
 
 	uint16_t crc;

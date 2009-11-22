@@ -111,7 +111,7 @@ static void handle_received_message(void)
 
 	memset(&reply, 0, sizeof(reply));
 
-	switch (rx_msg.id) {
+	switch (rx_msg.id & MSG_ID_MASK) {
 	case MSG_PING:
 		reply.id = MSG_PONG;
 		send_message(&reply);
@@ -256,7 +256,7 @@ static void handle_received_message(void)
 	}
 
 out:
-	if (rx_msg.flags & (1 << MSG_FLAG_REQ_ERRCODE)) {
+	if (rx_msg.id & MSG_FLAG_REQ_ERRCODE) {
 		memset(&reply, 0, sizeof(reply));
 		reply.id = MSG_ERROR;
 		reply.error.code = err;
@@ -460,7 +460,7 @@ static void usart_init(void)
 void remote_init(void)
 {
 	/* The remote tool depends on the exact size (and layout). */
-	BUILD_BUG_ON(sizeof(struct remote_message) != 12);
+	BUILD_BUG_ON(sizeof(struct remote_message) != 7);
 
 	usart_init();
 }
