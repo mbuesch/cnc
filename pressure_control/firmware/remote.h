@@ -78,7 +78,7 @@ struct remote_message {
 		uint8_t __padding[4];
 	} __attribute__((packed));
 
-	uint16_t crc;
+	uint8_t crc;
 } __attribute__((packed));
 
 

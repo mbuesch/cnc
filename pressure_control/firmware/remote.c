@@ -2,7 +2,7 @@
  *  Pneumatic pressure controller.
  *  Remote control.
  *
- *  Copyright (C) 2008 Michael Buesch <mb@bu3sch.de>
+ *  Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -87,9 +87,9 @@ static inline int8_t usart_rx(uint8_t *data)
 static void send_message(struct remote_message *msg)
 {
 	/* Calculate the CRC. */
-	msg->crc = crc16_block_update(0xFFFF, msg,
-				      sizeof(*msg) - sizeof(msg->crc));
-	msg->crc ^= 0xFFFF;
+	msg->crc = crc8_block_update(0xFF, msg,
+				     sizeof(*msg) - sizeof(msg->crc));
+	msg->crc ^= 0xFF;
 	/* And transmit the bits. */
 	usart_tx_buf(msg, sizeof(*msg));
 }
@@ -97,12 +97,12 @@ static void send_message(struct remote_message *msg)
 static void handle_received_message(void)
 {
 	struct remote_message reply;
-	uint16_t calc_crc;
+	uint8_t calc_crc;
 	uint8_t err = MSG_ERR_NONE;
 
-	calc_crc = crc16_block_update(0xFFFF, &rx_msg,
-				      sizeof(rx_msg) - sizeof(rx_msg.crc));
-	calc_crc ^= 0xFFFF;
+	calc_crc = crc8_block_update(0xFF, &rx_msg,
+				     sizeof(rx_msg) - sizeof(rx_msg.crc));
+	calc_crc ^= 0xFF;
 	if (calc_crc != rx_msg.crc) {
 		/* CRC mismatch. */
 		err = MSG_ERR_CHKSUM;
@@ -460,7 +460,7 @@ static void usart_init(void)
 void remote_init(void)
 {
 	/* The remote tool depends on the exact size (and layout). */
-	BUILD_BUG_ON(sizeof(struct remote_message) != 7);
+	BUILD_BUG_ON(sizeof(struct remote_message) != 6);
 
 	usart_init();
 }

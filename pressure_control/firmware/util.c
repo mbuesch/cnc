@@ -87,15 +87,12 @@ void infinite_sleep(void)
 		sleep_mode();
 }
 
-uint16_t crc16_block_update(uint16_t crc, const void *_data, uint16_t size)
+uint8_t crc8_block_update(uint8_t crc, const void *_data, uint8_t size)
 {
 	const uint8_t *data = _data;
 
-	while (size) {
-		crc = _crc16_update(crc, *data);
-		data++;
-		size--;
-	}
+	while (size--)
+		crc = _crc_ibutton_update(crc, *data++);
 
 	return crc;
 }

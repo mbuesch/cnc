@@ -35,7 +35,7 @@ CONFIG_PARITY			= PARITY_NONE
 CONFIG_STOPBITS			= 2
 
 # The size of one message
-MSG_SIZE			= 7
+MSG_SIZE			= 6
 MSG_PAYLOAD_SIZE		= 4
 # Message IDs
 MSG_ID_MASK			= 0x7F
@@ -225,9 +225,9 @@ class RemoteProtocol(QObject):
 				self.devRestarted = False
 
 	def checksumMessage(self, msg):
-		calc_crc = self.__crc16_update_buffer(0xFFFF, msg[0:-2])
-		calc_crc ^= 0xFFFF
-		want_crc = (ord(msg[-2]) | (ord(msg[-1]) << 8))
+		calc_crc = self.__crc8_update_buffer(0xFF, msg[0:-1])
+		calc_crc ^= 0xFF
+		want_crc = ord(msg[-1])
 		if calc_crc != want_crc:
 			text = self.tr("ERROR: message CRC mismatch\n")
 			mainwnd.centralWidget().log.hostLog(text)
@@ -249,7 +249,7 @@ class RemoteProtocol(QObject):
 			self.devRestarted = True
 
 	def getPayload(self, msg):
-		return msg[1:-2]
+		return msg[1:-1]
 
 	def sendMessage(self, id, flags, payload):
 		"""Send a message"""
@@ -261,10 +261,10 @@ class RemoteProtocol(QObject):
 		# Pad the payload up to the constant size
 		msg += '\0' * (MSG_PAYLOAD_SIZE - len(payload))
 		# Calculate the CRC
-		crc = self.__crc16_update_buffer(0xFFFF, msg)
-		crc ^= 0xFFFF
+		crc = self.__crc8_update_buffer(0xFF, msg)
+		crc ^= 0xFF
 		# Add the CRC to the message
-		msg += "%c%c" % ((crc & 0xFF), ((crc >> 8) & 0xFF))
+		msg += "%c" % crc
 		# Send the message
 		assert(len(msg) == MSG_SIZE)
 		self.serial.write(msg)
@@ -326,15 +326,15 @@ class RemoteProtocol(QObject):
 			i -= 1
 		return err
 
-	def __crc16_update_buffer(self, crc, buf):
+	def __crc8_update_buffer(self, crc, buf):
 		for c in buf:
 			crc ^= ord(c)
 			for i in range(0, 8):
 				if crc & 1:
-					crc = (crc >> 1) ^ 0xA001
+					crc = (crc >> 1) ^ 0x8C
 				else:
-					crc = (crc >> 1)
-		return crc
+					crc >>= 1
+		return crc & 0xFF
 
 class StatusBar(QStatusBar):
 	def showMessage(self, msg):

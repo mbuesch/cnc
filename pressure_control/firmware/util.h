@@ -81,7 +81,7 @@ static inline void irq_restore(uint8_t sreg_flags)
 #define irqs_disabled()		(!(SREG & (1 << SREG_I)))
 
 
-uint16_t crc16_block_update(uint16_t crc, const void *data, uint16_t size);
+uint8_t crc8_block_update(uint8_t crc, const void *data, uint8_t size);
 
 /* Convenient casting macros. */
 #define U8(value)		((uint8_t)(value))
