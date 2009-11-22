@@ -52,7 +52,7 @@ struct valves {
 			  port_1open, bit_1open,	\
 			  force_thres)			\
 	struct valves name = {				\
-		.type			= VALVES_2MAG,	\
+		.type			= VALVES_1MAG,	\
 		.state_force_threshold	= force_thres,	\
 		.open0			= {				\
 			.ddr		= _SFR_ADDR(DDR##port_0open),	\
