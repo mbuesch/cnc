@@ -239,7 +239,6 @@ class RemoteProtocol(QObject):
 		if not self.checksumMessage(msg):
 			return
 		id = ord(msg[0]) & MSG_ID_MASK
-		mainwnd.statusBar().showMessage(self.tr("Received message %u" % id))
 		if (id == MSG_LOGMESSAGE):
 			str = self.getPayload(msg).rstrip('\0')
 			mainwnd.centralWidget().log.devLog(str)
@@ -268,7 +267,6 @@ class RemoteProtocol(QObject):
 		# Send the message
 		assert(len(msg) == MSG_SIZE)
 		self.serial.write(msg)
-		mainwnd.statusBar().showMessage(self.tr("Sent message %u" % id))
 
 	def sendMessageSyncReply(self, id, flags, payload, replyId):
 		"""Send a message and synchronously wait for the reply."""
@@ -335,10 +333,6 @@ class RemoteProtocol(QObject):
 				else:
 					crc >>= 1
 		return crc & 0xFF
-
-class StatusBar(QStatusBar):
-	def showMessage(self, msg):
-		QStatusBar.showMessage(self, msg, 3000)
 
 class LogBrowser(QTextEdit):
 	def __init__(self, parent=None):
@@ -699,7 +693,6 @@ class MainWindow(QMainWindow):
 		mb.addMenu(helpmen)
 		self.setMenuBar(mb)
 
-		self.setStatusBar(StatusBar())
 		self.setCentralWidget(MainWidget())
 
 		self.resize(400, 350)
