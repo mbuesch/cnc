@@ -157,34 +157,38 @@ class RemoteProtocol(QObject):
 		QObject.__init__(self)
 		global remote
 
-		remote = self
-		self.serial = Serial(ttyfile, CONFIG_BAUDRATE,
-				     CONFIG_BYTESIZE, CONFIG_PARITY,
-				     CONFIG_STOPBITS)
-		self.__setResetLine(False)
-		QThread.msleep(100)
-		self.serial.flushInput()
+		try:
+			remote = self
+			self.serial = Serial(ttyfile, CONFIG_BAUDRATE,
+					     CONFIG_BYTESIZE, CONFIG_PARITY,
+					     CONFIG_STOPBITS)
+			self.__setResetLine(False)
+			QThread.msleep(100)
+			self.serial.flushInput()
 
-		self.devRestarted = False
+			self.devRestarted = False
 
-		self.pollTimer = QTimer(self)
-		self.connect(self.pollTimer, SIGNAL("timeout()"), self.__poll)
-		self.pollTimer.start(50)
+			self.pollTimer = QTimer(self)
+			self.connect(self.pollTimer, SIGNAL("timeout()"), self.__poll)
+			self.pollTimer.start(50)
 
-		self.keepAliveTimer = QTimer(self)
-		self.connect(self.keepAliveTimer, SIGNAL("timeout()"), self.__keepAlive)
-		if not opt_noka:
-			self.keepAliveTimer.start(1000)
+			self.keepAliveTimer = QTimer(self)
+			self.connect(self.keepAliveTimer, SIGNAL("timeout()"), self.__keepAlive)
+			if not opt_noka:
+				self.keepAliveTimer.start(1000)
 
-		if not opt_noping:
-			reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
-			if reply:
-				mainwnd.centralWidget().log.hostLog(
-					"PING->PONG success. Device is alife.\n")
-			else:
-				mainwnd.centralWidget().log.hostLog(
-					"Communication with device failed. "+\
-					"No reply to PING request.\n")
+			if not opt_noping:
+				reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
+				if reply:
+					mainwnd.centralWidget().log.hostLog(
+						"PING->PONG success. Device is alife.\n")
+				else:
+					mainwnd.centralWidget().log.hostLog(
+						"Communication with device failed. "+\
+						"No reply to PING request.\n")
+		except (SerialException, OSError, IOError), e:
+			print e
+			sys.exit(1)
 
 	def __setResetLine(self, resetOn):
 		# RTS is connected to the microcontroller reset line.
@@ -192,7 +196,10 @@ class RemoteProtocol(QObject):
 		# and the microcontroller is put into reset.
 		# If RTS is logic low, the microcontroller is in
 		# normal operation.
-		self.serial.setRTS(bool(resetOn))
+		try:
+			self.serial.setRTS(bool(resetOn))
+		except (SerialException, OSError, IOError), e:
+			mainwnd.statusBar().showMessage("Failed to toggle reset. %s" % e)
 
 	def rebootDevice(self):
 		# Reboot the microcontroller
@@ -216,8 +223,12 @@ class RemoteProtocol(QObject):
 					"Keep-alife: Failed to fetch configuration\n"))
 
 	def __poll(self):
-		if self.serial.inWaiting() >= MSG_SIZE:
-			self.parseMessage(self.serial.read(MSG_SIZE))
+		try:
+			if self.serial.inWaiting() >= MSG_SIZE:
+				self.parseMessage(self.serial.read(MSG_SIZE))
+		except (SerialException, OSError, IOError), e:
+			mainwnd.statusBar().showMessage("Failed to poll message. %s" % e)
+			return
 		if self.devRestarted:
 			if mainwnd.centralWidget().fetchState():
 				mainwnd.centralWidget().log.hostLog(self.tr("Device rebooted\n"))
@@ -231,7 +242,10 @@ class RemoteProtocol(QObject):
 		if calc_crc != want_crc:
 			text = self.tr("ERROR: message CRC mismatch\n")
 			mainwnd.centralWidget().log.hostLog(text)
-			self.serial.flushInput()
+			try:
+				self.serial.flushInput()
+			except (SerialException, OSError, IOError), e:
+				pass
 			return False
 		return True
 
@@ -266,28 +280,35 @@ class RemoteProtocol(QObject):
 		msg += "%c" % crc
 		# Send the message
 		assert(len(msg) == MSG_SIZE)
-		self.serial.write(msg)
+		try:
+			self.serial.write(msg)
+		except (SerialException, OSError, IOError), e:
+			mainwnd.statusBar().showMessage("Failed to send message. %s" % e)
 
 	def sendMessageSyncReply(self, id, flags, payload, replyId):
 		"""Send a message and synchronously wait for the reply."""
 		self.pollTimer.stop()
 		self.sendMessage(id, flags, payload)
 		timeout = QDateTime.currentDateTime().addMSecs(500)
-		while True:
-			if QDateTime.currentDateTime() >= timeout:
-				msg = None
-				break
-			if self.serial.inWaiting() < MSG_SIZE:
-				QThread.msleep(1)
-				continue
-			msg = self.serial.read(MSG_SIZE)
-			if not self.checksumMessage(msg):
-				continue
-			msgid = ord(msg[0])
-			if msgid == replyId:
-				break
-			# This is not a reply to our message.
-			self.parseMessage(msg)
+		try:
+			while True:
+				if QDateTime.currentDateTime() >= timeout:
+					msg = None
+					break
+				if self.serial.inWaiting() < MSG_SIZE:
+					QThread.msleep(1)
+					continue
+				msg = self.serial.read(MSG_SIZE)
+				if not self.checksumMessage(msg):
+					continue
+				msgid = ord(msg[0])
+				if msgid == replyId:
+					break
+				# This is not a reply to our message.
+				self.parseMessage(msg)
+		except (SerialException, OSError, IOError), e:
+			mainwnd.statusBar().showMessage("Failed to fetch reply. %s" % e)
+			msg = "\0" * MSG_SIZE
 		self.pollTimer.start()
 		return msg
 
@@ -333,6 +354,11 @@ class RemoteProtocol(QObject):
 				else:
 					crc >>= 1
 		return crc & 0xFF
+
+class StatusBar(QStatusBar):
+	def showMessage(self, msg):
+		print msg
+		QStatusBar.showMessage(self, msg, 3000)
 
 class LogBrowser(QTextEdit):
 	def __init__(self, parent=None):
@@ -693,6 +719,7 @@ class MainWindow(QMainWindow):
 		mb.addMenu(helpmen)
 		self.setMenuBar(mb)
 
+		self.setStatusBar(StatusBar())
 		self.setCentralWidget(MainWidget())
 
 		self.resize(400, 350)
@@ -730,7 +757,5 @@ def main():
 	exit(result)
 
 if __name__ == "__main__":
-	try:
-		main()
-	except SerialException, e:
-		print "[Serial error]  %s" % e.message
+	main()
+
