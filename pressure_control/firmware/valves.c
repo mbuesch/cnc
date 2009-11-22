@@ -29,46 +29,44 @@
 
 void valve0_switch(struct valves *v, uint8_t state)
 {
-	uint8_t p = MMIO8(v->port);
-
 	switch (v->type) {
 	case VALVES_1MAG:
 		if (state == VALVE_STATE_OPEN)
-			p |= BITMASK8(v->bit_0_open);
+			MMIO8(v->open0.port) |= v->open0.bitmask;
 		else if (state == VALVE_STATE_CLOSE)
-			p &= ~BITMASK8(v->bit_0_open);
+			MMIO8(v->open0.port) &= ~(v->open0.bitmask);
 		break;
 	case VALVES_2MAG:
-		p &= ~(BITMASK8(v->bit_0_close) | BITMASK8(v->bit_0_open));
-		if (state == VALVE_STATE_CLOSE)
-			p |= BITMASK8(v->bit_0_close);
-		else if (state == VALVE_STATE_OPEN)
-			p |= BITMASK8(v->bit_0_open);
+		if (state == VALVE_STATE_CLOSE) {
+			MMIO8(v->open0.port) &= ~(v->open0.bitmask);
+			MMIO8(v->close0.port) |= v->close0.bitmask;
+		} else if (state == VALVE_STATE_OPEN) {
+			MMIO8(v->close0.port) &= ~(v->close0.bitmask);
+			MMIO8(v->open0.port) |= v->open0.bitmask;
+		}
 		break;
 	}
-	MMIO8(v->port) = p;
 }
 
 void valve1_switch(struct valves *v, uint8_t state)
 {
-	uint8_t p = MMIO8(v->port);
-
 	switch (v->type) {
 	case VALVES_1MAG:
 		if (state == VALVE_STATE_OPEN)
-			p |= BITMASK8(v->bit_1_open);
+			MMIO8(v->open1.port) |= v->open1.bitmask;
 		else if (state == VALVE_STATE_CLOSE)
-			p &= ~BITMASK8(v->bit_1_open);
+			MMIO8(v->open1.port) &= ~(v->open1.bitmask);
 		break;
 	case VALVES_2MAG:
-		p &= ~(BITMASK8(v->bit_1_close) | BITMASK8(v->bit_1_open));
-		if (state == VALVE_STATE_CLOSE)
-			p |= BITMASK8(v->bit_1_close);
-		else if (state == VALVE_STATE_OPEN)
-			p |= BITMASK8(v->bit_1_open);
+		if (state == VALVE_STATE_CLOSE) {
+			MMIO8(v->open1.port) &= ~(v->open1.bitmask);
+			MMIO8(v->close1.port) |= v->close1.bitmask;
+		} else if (state == VALVE_STATE_OPEN) {
+			MMIO8(v->close1.port) &= ~(v->close1.bitmask);
+			MMIO8(v->open1.port) |= v->open1.bitmask;
+		}
 		break;
 	}
-	MMIO8(v->port) = p;
 }
 
 void valves_global_switch(struct valves *v, uint8_t state)
@@ -112,11 +110,14 @@ static inline void valves_ddr_setup(struct valves *v)
 {
 	switch (v->type) {
 	case VALVES_1MAG:
-		MMIO8(v->ddr) |= BITMASK8(v->bit_0_open) | BITMASK8(v->bit_1_open);
+		MMIO8(v->open0.ddr) |= v->open0.bitmask;
+		MMIO8(v->open1.ddr) |= v->open1.bitmask;
 		break;
 	case VALVES_2MAG:
-		MMIO8(v->ddr) |= BITMASK8(v->bit_0_close) | BITMASK8(v->bit_0_open) |
-				 BITMASK8(v->bit_1_close) | BITMASK8(v->bit_1_open);
+		MMIO8(v->open0.ddr) |= v->open0.bitmask;
+		MMIO8(v->open1.ddr) |= v->open1.bitmask;
+		MMIO8(v->close0.ddr) |= v->close0.bitmask;
+		MMIO8(v->close1.ddr) |= v->close1.bitmask;
 		break;
 	}
 }

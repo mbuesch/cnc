@@ -49,8 +49,13 @@ static uint8_t sensor_cycle;
 
 
 /* The hardware definitions. */
-DEFINE_VALVE(z_control_valves, VALVES_2MAG, D, 6, 7, 4, 5, 0);
-DEFINE_VALVE(xy_control_valves, VALVES_1MAG, C, 2, -1, 3, -1, 400);
+DEFINE_VALVE_2MAG(z_control_valves,
+		  D,6,	D,7,
+		  D,4,	D,5,
+		  0);
+DEFINE_VALVE_1MAG(xy_control_valves,
+		  C,2,	C,3,
+		  400);
 static DEFINE_SENSOR(z_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
