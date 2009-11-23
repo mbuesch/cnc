@@ -9,11 +9,11 @@
 #100 = 3.0		( Cutter radius; must be 3 +-0.1 )
 #101 = 4000		( Roughing speed in min^-1 )
 #102 = 4000		( Finecut speed in min^-1 )
-#103 = 250		( Roughing feed in mm/min )
-#104 = 250		( Finecut feed in mm/min )
+#103 = 350		( Roughing feed in mm/min )
+#104 = 350		( Finecut feed in mm/min )
 #105 = -5		( Z depth )
-#106 = 3		( Z stepping while roughing )
-#107 = 5.05		( X/Y stepping in finecut )
+#106 = 1		( Z stepping while roughing )
+#107 = 0.1		( X/Y stepping in finecut )
 #108 = 0.05		( Roughing G64 tolerance )
 #109 = 0.01		( Finecut G64 tolerance )
 
@@ -39,6 +39,7 @@ O1 sub ( Roughing subroutine )
 	G64 P#108
 	G0 X-51 Y-23 Z5 S#101 F#103
 
+	M3
 	#200 = 0
 	O11 while [ 1 ]
 		#200 = [#200 - #106]
@@ -143,6 +144,7 @@ O2 sub ( Finecut subroutine )
 
 	( Left square )
 	G0 X-20 Y-25 Z#105 S#102 F#104
+	M3
 	#200 = 0.30
 	O21 while [ 1 ]
 		#200 = [#200 - #107]

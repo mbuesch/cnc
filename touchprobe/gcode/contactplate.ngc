@@ -10,7 +10,7 @@ G17 G40 G49 G80 G90 G94 G61 G21
 #101 = 150 ( XY feed )
 
 
-O1 sub
+O1 sub ( electrical paths )
 	G61
 	G0 X0 Y0 Z5
 	S1 M3
@@ -32,9 +32,9 @@ O1 sub
 O1 endsub
 
 
-O2 sub
+O2 sub ( center hole )
 	G61
-	G0 X0 Y[4.05 - 1.2] Z5
+	G0 X0 Y[4.075 - 1.2] Z5
 	S1 M3
 
 	G0 Z0
@@ -46,7 +46,7 @@ O2 sub
 		O211 endif
 		G1 Z#200 F#100
 
-		G3 X0 Y[4.05 - 1.2] I0 J[-4.05 + 1.2] F#101
+		G3 X0 Y[4.075 - 1.2] I0 J[-4.075 + 1.2] F#101
 
 		O212 if [#200 eq -1.7]
 			O21 break
@@ -56,7 +56,7 @@ O2 sub
 O2 endsub
 
 
-O3 sub
+O3 sub ( outer contour )
 	G61
 	G0 X0 Y[16.5 + 1.2] Z5
 	S1 M3
@@ -80,7 +80,7 @@ O3 sub
 O3 endsub
 
 
-O4 sub
+O4 sub ( contact holes )
 	G61
 	G0 X0 Y12 Z5
 	S1 M3
