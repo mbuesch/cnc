@@ -29,8 +29,9 @@ enum remote_message_id {
 	MSG_TURNON,
 
 
-	MSG_ID_MASK		= 0x7F,
-	MSG_FLAG_REQ_ERRCODE	= 0x80,
+	MSG_ID_MASK		= 0x3F,
+	MSG_FLAG_QOVERFLOW	= 0x40, /* TX queue overflow */
+	MSG_FLAG_REQ_ERRCODE	= 0x80, /* Error code is requested */
 };
 
 enum remote_message_error {

@@ -38,7 +38,7 @@ CONFIG_STOPBITS			= 2
 MSG_SIZE			= 6
 MSG_PAYLOAD_SIZE		= 4
 # Message IDs
-MSG_ID_MASK			= 0x7F
+MSG_ID_MASK			= 0x3F
 MSG_INVALID			= 0
 MSG_ERROR			= 1
 MSG_LOGMESSAGE			= 2
@@ -60,6 +60,7 @@ MSG_RESTARTED			= 17
 MSG_SHUTDOWN			= 18
 MSG_TURNON			= 19
 # Message flags
+MSG_FLAG_QOVERFLOW		= 0x40
 MSG_FLAG_REQ_ERRCODE		= 0x80
 # Message error codes
 MSG_ERR_NONE			= 0 # No error
@@ -124,16 +125,16 @@ def parseArgs():
 		if o in ("-l", "--log"):
 			opt_logfile = v
 
-class Log(QObject):
-	def __init__(self, logfile):
+class LogFile(QObject):
+	def __init__(self, logfileName):
 		QObject.__init__(self)
 		self.fd = None
-		if not logfile:
+		if not logfileName:
 			return
 		try:
-			self.fd = file(logfile, "w+b")
+			self.fd = file(logfileName, "w+b")
 		except IOError, e:
-			print "Failed to open logfile %s: %s" % (logfile, e.strerror)
+			print "Failed to open logfile %s: %s" % (logfileName, e.strerror)
 			sys.exit(1)
 		self.write("X/Y,X/Y lower threshold,X/Y upper threshold,"+\
 			   "Z,Z lower threshold,Z upper threshold,\n")
@@ -225,7 +226,7 @@ class RemoteProtocol(QObject):
 	def __poll(self):
 		try:
 			if self.serial.inWaiting() >= MSG_SIZE:
-				self.parseMessage(self.serial.read(MSG_SIZE))
+				self.parseMessage(self.__readMessage())
 		except (SerialException, OSError, IOError), e:
 			mainwnd.statusBar().showMessage("Failed to poll message. %s" % e)
 			return
@@ -248,6 +249,14 @@ class RemoteProtocol(QObject):
 				pass
 			return False
 		return True
+
+	def __readMessage(self):
+		msg = self.serial.read(MSG_SIZE)
+		flags = ord(msg[0]) & ~MSG_ID_MASK
+		if flags & MSG_FLAG_QOVERFLOW:
+			mainwnd.centralWidget().log.hostLog(
+				"Warning: TX queue overflow on the device")
+		return msg
 
 	def parseMessage(self, msg):
 		if not self.checksumMessage(msg):
@@ -298,10 +307,10 @@ class RemoteProtocol(QObject):
 				if self.serial.inWaiting() < MSG_SIZE:
 					QThread.msleep(1)
 					continue
-				msg = self.serial.read(MSG_SIZE)
+				msg = self.__readMessage()
 				if not self.checksumMessage(msg):
 					continue
-				msgid = ord(msg[0])
+				msgid = ord(msg[0]) & MSG_ID_MASK
 				if msgid == replyId:
 					break
 				# This is not a reply to our message.
@@ -700,10 +709,10 @@ class MainWidget(QWidget):
 		z_mbar = ord(msg[2]) | (ord(msg[3]) << 8)
 		self.xy.gauge.setValue(float(xy_mbar) / 1000)
 		self.z.gauge.setValue(float(z_mbar) / 1000)
-		log.logPressure(xy_mbar, self.xy.getDesiredPressure(),
-				self.xy.getHysteresis(),
-				z_mbar, self.z.getDesiredPressure(),
-				self.z.getHysteresis())
+		logfile.logPressure(xy_mbar, self.xy.getDesiredPressure(),
+				    self.xy.getHysteresis(),
+				    z_mbar, self.z.getDesiredPressure(),
+				    self.z.getHysteresis())
 
 class MainWindow(QMainWindow):
 	def __init__(self, parent=None):
@@ -739,14 +748,14 @@ def main():
 	global remote
 	global mainwnd
 	global app
-	global log
+	global logfile
 
 	mainwnd = None
 
 	app = QApplication(sys.argv)
 	parseArgs()
 
-	log = Log(opt_logfile)
+	logfile = LogFile(opt_logfile)
 	mainwnd = MainWindow()
 	remote = RemoteProtocol(opt_ttyfile)
 

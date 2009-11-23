@@ -78,7 +78,8 @@ static inline void irq_restore(uint8_t sreg_flags)
 	SREG = sreg_flags;
 }
 
-#define irqs_disabled()		(!(SREG & (1 << SREG_I)))
+#define __irqs_disabled(sreg)	(!(sreg & (1 << SREG_I)))
+#define irqs_disabled()		__irqs_disabled(SREG)
 
 
 uint8_t crc8_block_update(uint8_t crc, const void *data, uint8_t size);

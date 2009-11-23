@@ -33,29 +33,99 @@
 #define USE_2X		1
 
 
+/* Last received message. */
 static struct remote_message rx_msg;
 static uint8_t rx_msg_count;
 static bool rx_msg_valid;
 static bool rx_softirq;
 static uint16_t rx_timeout;
 
+/* Transmission queue. */
+static struct remote_message tx_queue[32];
+static uint8_t tx_queue_in_ptr;
+static uint8_t tx_queue_out_ptr;
+static uint8_t tx_queue_used;
+static uint8_t tx_byte_ptr;
 
-static inline void usart_tx(uint8_t data)
+
+static inline uint8_t message_calc_crc(const struct remote_message *msg)
 {
-	while (!(UCSRA & (1 << UDRE)))
-		;
-	UDR = data;
+	uint8_t crc;
+
+	crc = crc8_block_update(0xFF, msg,
+				sizeof(*msg) - sizeof(msg->crc));
+	crc ^= 0xFF;
+
+	return crc;
 }
 
-static void usart_tx_buf(const void *_buf, uint8_t size)
+static void tx_put_next_byte(void)
 {
-	const uint8_t *buf = _buf;
+	const struct remote_message *msg;
+	const uint8_t *buf;
 
-	while (size) {
-		usart_tx(*buf);
-		buf++;
-		size--;
+	msg = &tx_queue[tx_queue_out_ptr];
+	buf = (const uint8_t *)msg;
+
+	UDR = buf[tx_byte_ptr];
+	tx_byte_ptr++;
+	if (tx_byte_ptr >= sizeof(struct remote_message)) {
+		tx_byte_ptr = 0;
+		tx_queue_out_ptr++;
+		if (tx_queue_out_ptr >= ARRAY_SIZE(tx_queue))
+			tx_queue_out_ptr = 0;
+		tx_queue_used--;
+		if (!tx_queue_used)
+			UCSRB &= ~(1 << UDRIE);
 	}
+}
+
+ISR(USART_UDRE_vect)
+{
+	if (tx_queue_used)
+		tx_put_next_byte();
+}
+
+static void queue_tx_message(struct remote_message *msg)
+{
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+
+	mb();
+	if (unlikely(tx_queue_used >= ARRAY_SIZE(tx_queue))) {
+		/* TX queue is full. Notify the overflow condition
+		 * to the remote control, once we get the message out. */
+		msg->id |= MSG_FLAG_QOVERFLOW;
+		msg->crc = message_calc_crc(msg);
+
+		/* Emergency situation. Manually push TX to get things
+		 * out of the box. */
+		do {
+			if (UCSRA & (1 << UDRE))
+				tx_put_next_byte();
+			if (!__irqs_disabled(sreg)) {
+				/* IRQs were enabled before we were called.
+				 * Be nice to other interrupts and re-enable them
+				 * for a microsecond. */
+				sei();
+				udelay(1);
+				cli();
+				mb();
+			}
+		} while (tx_queue_used >= ARRAY_SIZE(tx_queue));
+	}
+
+	memcpy(&tx_queue[tx_queue_in_ptr], msg, sizeof(*msg));
+	tx_queue_used++;
+	tx_queue_in_ptr++;
+	if (tx_queue_in_ptr >= ARRAY_SIZE(tx_queue))
+		tx_queue_in_ptr = 0;
+
+	if (tx_queue_used == 1)
+		UCSRB |= (1 << UDRIE);
+
+	irq_restore(sreg);
 }
 
 #define ERXFE		1 /* USART RX frame error */
@@ -86,12 +156,8 @@ static inline int8_t usart_rx(uint8_t *data)
 
 static void send_message(struct remote_message *msg)
 {
-	/* Calculate the CRC. */
-	msg->crc = crc8_block_update(0xFF, msg,
-				     sizeof(*msg) - sizeof(msg->crc));
-	msg->crc ^= 0xFF;
-	/* And transmit the bits. */
-	usart_tx_buf(msg, sizeof(*msg));
+	msg->crc = message_calc_crc(msg);
+	queue_tx_message(msg);
 }
 
 static void handle_received_message(void)
@@ -100,9 +166,7 @@ static void handle_received_message(void)
 	uint8_t calc_crc;
 	uint8_t err = MSG_ERR_NONE;
 
-	calc_crc = crc8_block_update(0xFF, &rx_msg,
-				     sizeof(rx_msg) - sizeof(rx_msg.crc));
-	calc_crc ^= 0xFF;
+	calc_crc = message_calc_crc(&rx_msg);
 	if (calc_crc != rx_msg.crc) {
 		/* CRC mismatch. */
 		err = MSG_ERR_CHKSUM;
