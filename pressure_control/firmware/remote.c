@@ -363,7 +363,7 @@ ISR(USART_RXC_vect)
 }
 
 /* Called with IRQs disabled. */
-static void usart_rx_timeout_check()
+static void usart_rx_timeout_check(void)
 {
 	if (rx_msg_count > 0)
 		rx_timeout++;

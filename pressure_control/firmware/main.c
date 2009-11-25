@@ -38,10 +38,10 @@ struct eeprom_data {
 };
 
 /* The pressure configuration data. */
-struct pressure_config cfg_xy;
-struct pressure_config cfg_z;
+static struct pressure_config cfg_xy;
+static struct pressure_config cfg_z;
 /* The pressure state data. */
-struct pressure_state state;
+static struct pressure_state state;
 /* The 1000Hz jiffies counter */
 static jiffies_t jiffies_counter;
 /* The sensor that we're currently handling. */
@@ -182,7 +182,7 @@ ISR(TIMER1_COMPA_vect)
 	jiffies_counter++;
 }
 
-void system_timer_init(void)
+static void system_timer_init(void)
 {
 	TCCR1B = (1 << WGM12) | (1 << CS10) | (1 << CS11); /* prescaler 64 */
 	OCR1A = 250; /* 1kHz timer at 16MHz crystal */
