@@ -1,22 +1,32 @@
-ARCH		?= atmega8
-AVRDUDE_ARCH	?= m8
-AVRDUDE		?= avrdude
-AVRDUDE_SPEED	?= 1
-PROGRAMMER	?= avrisp2
-PROGPORT	?= usb
+ARCH		= atmega8
+AVRDUDE_ARCH	= m8
+AVRDUDE		= avrdude
+AVRDUDE_SPEED	= 1
+PROGRAMMER	= avrisp2
+PROGPORT	= usb
 
 CC		= avr-gcc
 OBJCOPY		= avr-objcopy
 SIZE		= avr-size
+SPARSE		= sparse
 
-V		= @
+V		= @		# Verbose build:  make V=1
+C		= 0		# Sparsechecker build:  make C=1
 Q		= $(V:1=)
 QUIET_CC	= $(Q:@=@echo '     CC       '$@;)$(CC)
 QUIET_OBJCOPY	= $(Q:@=@echo '     OBJCOPY  '$@;)$(OBJCOPY)
 QUIET_SIZE	= $(Q:@=@echo '     SIZE     '$@;)$(SIZE)
+ifeq ($(C),1)
+QUIET_SPARSE	= $(Q:@=@echo '     SPARSE   '$@;)$(SPARSE)
+else
+QUIET_SPARSE	= @/bin/true
+endif
 
-CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -Wall
-CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
+CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -Wall \
+		  "-Dinline=inline __attribute__((__always_inline__))"
+SPARSEFLAGS	= $(CFLAGS) -I "/usr/lib/avr/include" -D__AVR_ARCH__=4 \
+		  -D__AVR_ATmega8__=1 -D__ATTR_PROGMEM__="" -Dsignal=dllexport \
+		  -Dexternally_visible=dllexport
 
 
 OBJECTS = main.o util.o valves.o sensor.o remote.o
@@ -43,6 +53,7 @@ remote.o: util.h remote.h calibration.h main.h valves.h
 	$(QUIET_CC) $(CFLAGS) -S $*.c
 
 %.o: %.c
+	$(QUIET_SPARSE) $(SPARSEFLAGS) $<
 	$(QUIET_CC) -o $@ -c $(CFLAGS) $<
 
 $(BIN): $(OBJECTS)
