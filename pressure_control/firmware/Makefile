@@ -9,6 +9,12 @@ CC		= avr-gcc
 OBJCOPY		= avr-objcopy
 SIZE		= avr-size
 
+V		= @
+Q		= $(V:1=)
+QUIET_CC	= $(Q:@=@echo '     CC       '$@;)$(CC)
+QUIET_OBJCOPY	= $(Q:@=@echo '     OBJCOPY  '$@;)$(OBJCOPY)
+QUIET_SIZE	= $(Q:@=@echo '     SIZE     '$@;)$(SIZE)
+
 CFLAGS		= -mmcu=$(ARCH) -std=gnu99 -g0 -O2 -Wall
 CFLAGS		+= "-Dinline=inline __attribute__((__always_inline__))"
 
@@ -21,7 +27,7 @@ HEX	= $(NAME).hex
 EEP	= $(NAME).eep.hex
 FUSES	= $(NAME).fuses.bin
 
-all: $(HEX) fuses
+all: $(HEX) $(FUSES)
 
 main.o: util.h calibration.h valves.h sensor.h remote.h main.h
 
@@ -34,16 +40,19 @@ sensor.o: util.h sensor.h
 remote.o: util.h remote.h calibration.h main.h valves.h
 
 %.s: %.c
-	$(CC) $(CFLAGS) -S $*.c
+	$(QUIET_CC) $(CFLAGS) -S $*.c
+
+%.o: %.c
+	$(QUIET_CC) -o $@ -c $(CFLAGS) $<
 
 $(BIN): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $(BIN) $(OBJECTS) $(LDFLAGS)
+	$(QUIET_CC) $(CFLAGS) -o $(BIN) $(OBJECTS) $(LDFLAGS)
 
 $(HEX): $(BIN)
-	$(OBJCOPY) -R.eeprom -R.fuse -O ihex $(BIN) $(HEX)
-	$(OBJCOPY) -j.eeprom --set-section-flags=.eeprom="alloc,load" \
-		   --change-section-lma .eeprom=0 -O ihex $(BIN) $(EEP)
-	$(SIZE) $(BIN)
+	$(QUIET_OBJCOPY) -R.eeprom -R.fuse -O ihex $(BIN) $(HEX)
+	$(QUIET_OBJCOPY) -j.eeprom --set-section-flags=.eeprom="alloc,load" \
+			 --change-section-lma .eeprom=0 -O ihex $(BIN) $(EEP)
+	$(QUIET_SIZE) $(BIN)
 
 avrdude:
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
@@ -65,10 +74,10 @@ reset:
 	 -c $(PROGRAMMER) -P $(PROGPORT) \
 	 -U signature:r:/dev/null:i -q -q
 
-fuses: $(BIN)
-	$(OBJCOPY) -j.fuse -O binary $(BIN) $(FUSES)
+$(FUSES): $(BIN)
+	$(QUIET_OBJCOPY) -j.fuse -O binary $(BIN) $(FUSES)
 
-writefuses: fuses
+writefuses: $(FUSES)
 	@echo Low fuse is:  $$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 1)
 	@echo High fuse is: $$(hexdump -e '1/1 "0x%02X "' $(FUSES) | cut -d ' ' -f 2)
 	$(AVRDUDE) -B 100 -p $(AVRDUDE_ARCH) \
