@@ -108,9 +108,9 @@ static void queue_tx_message(struct remote_message *msg)
 				/* IRQs were enabled before we were called.
 				 * Be nice to other interrupts and re-enable them
 				 * for a microsecond. */
-				sei();
+				irq_enable();
 				udelay(1);
-				cli();
+				irq_disable();
 				mb();
 			}
 		} while (tx_queue_used >= ARRAY_SIZE(tx_queue));
@@ -225,34 +225,34 @@ static void handle_received_message(void)
 	case MSG_SET_DESIRED_PRESSURE: {
 		struct pressure_config xy, z;
 
-		cli();
+		irq_disable();
 		get_pressure_config(&xy, &z);
 		if (rx_msg.setpressure.island == 0)
 			xy.desired = rx_msg.setpressure.mbar;
 		else if (rx_msg.setpressure.island == 1)
 			z.desired = rx_msg.setpressure.mbar;
 		set_pressure_config(&xy, &z);
-		sei();
+		irq_enable();
 		break;
 	}
 	case MSG_SET_HYSTERESIS: {
 		struct pressure_config xy, z;
 
-		cli();
+		irq_disable();
 		get_pressure_config(&xy, &z);
 		if (rx_msg.setpressure.island == 0)
 			xy.hysteresis = rx_msg.setpressure.mbar;
 		else if (rx_msg.setpressure.island == 1)
 			z.hysteresis = rx_msg.setpressure.mbar;
 		set_pressure_config(&xy, &z);
-		sei();
+		irq_enable();
 		break;
 	}
 	case MSG_SET_CONFIG_FLAGS: {
 		struct pressure_config xy, z;
 		bool flag;
 
-		cli();
+		irq_disable();
 		get_pressure_config(&xy, &z);
 		flag = !!(rx_msg.setconfig.flags & (1 << CFG_FLAG_AUTOADJUST_ENABLE));
 		if (rx_msg.setconfig.island == 0) {
@@ -269,7 +269,7 @@ static void handle_received_message(void)
 			}
 		}
 		set_pressure_config(&xy, &z);
-		sei();
+		irq_enable();
 		break;
 	}
 	case MSG_SET_VALVE: {
@@ -464,7 +464,7 @@ void remote_work(void)
 		mb();
 		rx_msg_valid = 0;
 	}
-	cli();
+	irq_disable();
 	if (rx_softirq) {
 		rx_softirq = 0;
 		usart_handle_rx_irq();
@@ -473,7 +473,7 @@ void remote_work(void)
 		last_timeout_check = now;
 		usart_rx_timeout_check();
 	}
-	sei();
+	irq_enable();
 }
 
 void remote_pressure_change_notification(uint16_t xy_mbar, uint16_t z_mbar)

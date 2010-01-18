@@ -81,7 +81,7 @@ void panic(const prog_char *msg)
 
 void infinite_sleep(void)
 {
-	cli();
+	irq_disable();
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 	while (1)
 		sleep_mode();

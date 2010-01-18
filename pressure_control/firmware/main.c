@@ -298,7 +298,7 @@ int main(void)
 {
 	uint8_t mcucsr;
 
-	cli();
+	irq_disable();
 	mcucsr = MCUCSR;
 	MCUCSR = 0;
 	wdt_disable();
@@ -328,7 +328,7 @@ int main(void)
 	eeprom_load_config();
 	system_timer_init();
 
-	sei();
+	irq_enable();
 
 	print("Monitoring...\n");
 	remote_work();

@@ -62,24 +62,35 @@ uint8_t hexdigit_to_ascii(uint8_t digit);
  * buf must be at least (NUM16_NR_DIGITS + 1) long */
 void num16_to_ascii(uint8_t *buf, uint16_t v);
 
-/* IRQ handling.
- * We use a macro for irq_disable_save(), because stupid gcc is not
- * able to properly optimize an inline function that returns a value.
- */
-#define irq_disable_save()	({	\
-	uint8_t sreg_flags = SREG;	\
-	cli();				\
-	sreg_flags;			\
-				})
+
+#define __irqs_disabled(sreg)	(!(sreg & (1 << SREG_I)))
+#define irqs_disabled()		__irqs_disabled(SREG)
+
+static inline void irq_disable(void)
+{
+	cli();
+	mb();
+}
+
+static inline void irq_enable(void)
+{
+	mb();
+	sei();
+}
+
+static inline uint8_t irq_disable_save(void)
+{
+	uint8_t sreg = SREG;
+	cli();
+	mb();
+	return sreg;
+}
 
 static inline void irq_restore(uint8_t sreg_flags)
 {
 	mb();
 	SREG = sreg_flags;
 }
-
-#define __irqs_disabled(sreg)	(!(sreg & (1 << SREG_I)))
-#define irqs_disabled()		__irqs_disabled(SREG)
 
 
 uint8_t crc8_block_update(uint8_t crc, const void *data, uint8_t size);
