@@ -6,7 +6,7 @@ PROGRAMMER	?= avrisp2
 PROGPORT	?= usb
 
 LFUSE	= 0x04
-HFUSE	= 0xD9
+HFUSE	= 0x99
 
 
 NAME	= estop

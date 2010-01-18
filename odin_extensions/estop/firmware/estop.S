@@ -24,6 +24,7 @@
 .def t1				= r17	; Temp reg 1
 .def t2				= r18	; Temp reg 2
 .def t3				= r19	; Temp reg 3
+.def mcusr_copy			= r22	; Saved MCUSR
 .def econditions		= r23	; Scratch register to store E-STOP conditions
 .def sigtimer			= r24	; Input signal conditioning timer counter
 .def tov1_clear_mask		= r25	; Holds mask to clear TOV1
@@ -129,13 +130,19 @@ reset:
 	cli
 	clr zero
 
-	; Init the stackpointer
-	ldi t0, low(RAMEND)
-	out SPL, t0
-	ldi t0, high(RAMEND)
-	out SPH, t0
+	; Initialize the watchdog timeout
+	in mcusr_copy, MCUSR
+	out MCUSR, zero
+	wdr
+	in t0, WDTCR
+	ori t0, (1<<WDCE) | (1<<WDE)
+	ldi t1, (1<<WDE) | (0<<WDP0) | (1<<WDP1) | (0<<WDP2) ;65ms
+	out WDTCR, t0
+	out WDTCR, t1
+	wdr
 
 	; Setup the port configuration
+	; Initialize all signals to E-STOP state
 	ldi t0, (1<<JOINTBRAKE_BIT)
 	out PORTB, t0
 	ldi t0, ((1<<MSPINDLERUN_OUT_BIT) | (1<<JOINTBRAKE_BIT))
@@ -150,6 +157,12 @@ reset:
 	out PORTD, t0
 	ldi t0, (1<<ESTOP_OUT_BIT)
 	out DDRD, t0
+
+	; Init the stackpointer
+	ldi t0, low(RAMEND)
+	out SPL, t0
+	ldi t0, high(RAMEND)
+	out SPH, t0
 
 	; Initialize timer2 for input signal conditioning.
 	; Timer2 triggers the OC interrupt approx every 200uSec.
@@ -180,14 +193,17 @@ reset:
 	out GIFR, t0
 	ldi tov1_clear_mask, (1<<TOV1)		; Init the mask to clear TOV1
 
+	; Clear the watchdog-reset flag, if we had a power-on-reset
+	sbrc mcusr_copy, PORF
+	andi mcusr_copy, ~(1<<WDRF)
+
 	; Wait for the X/Y/Z driver circuits to finish initialization
 	mdelay 1000
 
-	; Reset the charge pump monitor timer and enable interrupts
+	; Reset the charge pump monitor timer
 	out TCNT1H, zero
 	out TCNT1L, zero
 	out TIFR, tov1_clear_mask
-	sei
 
 	; We start with an E-STOP condition
 	rjmp enter_estop_loop
@@ -205,10 +221,14 @@ reset:
 ;*******************************************
 .equ ESTOP_SIGTIMER = 255	; time = ESTOP_SIGTIMER * 200uS
 enter_estop_loop:
+	cli
 	cbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT	; Stop the master spindle
 	sbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Activate the joints brake
 	sbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; Assert the E-STOP output signal
 	mdelay 100					; Debounce E-STOP buttons
+	sbrc mcusr_copy, WDRF				; If we had a watchdog timeout...
+	rjmp enter_estop_loop				; ...don't ever leave E-STOP state
+	sei
 	ldi sigtimer, ESTOP_SIGTIMER			; Reset the conditioning timer counter.
 estop_loop:
 	clr econditions
@@ -225,6 +245,7 @@ estop_loop:
 	cpsne sigtimer, zero				; If the conditioning timer counter is zero...
 	rjmp enter_run_loop				; ...enter RUN state.
 
+	wdr						; Poke the watchdog
 	rjmp estop_loop
 
 
@@ -258,6 +279,7 @@ run_loop:
 	sbrs t0, MSPINDLESTOP_IN_BIT
 	sbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT
 
+	wdr						; Poke the watchdog
 	rjmp run_loop
 
 
@@ -285,6 +307,7 @@ __mdelay:
 	brne __mdelay_1ms_loop
 	subi t0, low(1)
 	sbci t1, high(1)
+	wdr
 	brne __mdelay_loop		; Wait another millisecond
 	out TCCR0, zero			; Stop timer0
 	pop t3
