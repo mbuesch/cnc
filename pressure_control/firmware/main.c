@@ -373,13 +373,13 @@ int main(void)
 }
 
 /* The fuse bits - AT_Mega8
- * External clock, 0ms startup
+ * External clock, 64ms startup
  * BOD 4.0V
  * Boot vector disabled
  * Preserve EEPROM disabled
  * SPI enabled
  */
 FUSES = {
-	.low	= 0x00,
+	.low	= 0x20,
 	.high	= 0xD9,
 };
