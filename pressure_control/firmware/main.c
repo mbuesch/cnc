@@ -289,6 +289,11 @@ void prepare_shutdown(void)
 	state.device_enabled = 0;
 }
 
+bool device_is_enabled(void)
+{
+	return state.device_enabled;
+}
+
 int main(void)
 {
 	uint8_t mcucsr;

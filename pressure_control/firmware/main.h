@@ -68,6 +68,7 @@ void set_pressure_config(struct pressure_config *xy,
 void get_pressure_state(struct pressure_state *state);
 void prepare_turn_on(void);
 void prepare_shutdown(void);
+bool device_is_enabled(void);
 
 
 struct valves;

@@ -225,6 +225,11 @@ static void handle_received_message(void)
 	case MSG_SET_DESIRED_PRESSURE: {
 		struct pressure_config xy, z;
 
+		if (!device_is_enabled()) {
+			err = MSG_ERR_BUSY;
+			goto out;
+		}
+
 		irq_disable();
 		get_pressure_config(&xy, &z);
 		if (rx_msg.setpressure.island == 0)
@@ -237,6 +242,11 @@ static void handle_received_message(void)
 	}
 	case MSG_SET_HYSTERESIS: {
 		struct pressure_config xy, z;
+
+		if (!device_is_enabled()) {
+			err = MSG_ERR_BUSY;
+			goto out;
+		}
 
 		irq_disable();
 		get_pressure_config(&xy, &z);
@@ -251,6 +261,11 @@ static void handle_received_message(void)
 	case MSG_SET_CONFIG_FLAGS: {
 		struct pressure_config xy, z;
 		bool flag;
+
+		if (!device_is_enabled()) {
+			err = MSG_ERR_BUSY;
+			goto out;
+		}
 
 		irq_disable();
 		get_pressure_config(&xy, &z);
@@ -275,6 +290,11 @@ static void handle_received_message(void)
 	case MSG_SET_VALVE: {
 		struct pressure_config xy, z;
 		struct valves *v;
+
+		if (!device_is_enabled()) {
+			err = MSG_ERR_BUSY;
+			goto out;
+		}
 
 		get_pressure_config(&xy, &z);
 		if (rx_msg.valve.island == 0) {
