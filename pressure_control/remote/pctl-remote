@@ -59,6 +59,8 @@ MSG_SET_VALVE			= 16
 MSG_RESTARTED			= 17
 MSG_SHUTDOWN			= 18
 MSG_TURNON			= 19
+MSG_GET_MAXIMA			= 20
+MSG_MAXIMA			= 21
 # Message flags
 MSG_FLAG_QOVERFLOW		= 0x40
 MSG_FLAG_REQ_ERRCODE		= 0x80
@@ -666,6 +668,30 @@ class MainWidget(QWidget):
 			print "Failed to fetch current pressure. No reply."
 			return False
 		self.parseCurrentPressureMsg(reply)
+
+		# Get the X/Y maxima
+		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, "%c" % 0,
+						    MSG_MAXIMA)
+		if not reply:
+			print "Failed to fetch X/Y maxima. No reply."
+			return False
+		reply = remote.getPayload(reply)
+		pressureMbar = ord(reply[0]) | (ord(reply[1]) << 8)
+		hysteresisMbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		self.xy.pressureSpin.setMaximum(float(pressureMbar) / 1000)
+		self.xy.hystSpin.setMaximum(float(pressureMbar) / 1000)
+
+		# Get the Z maxima
+		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, "%c" % 1,
+						    MSG_MAXIMA)
+		if not reply:
+			print "Failed to fetch Z maxima. No reply."
+			return False
+		reply = remote.getPayload(reply)
+		pressureMbar = ord(reply[0]) | (ord(reply[1]) << 8)
+		hysteresisMbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		self.z.pressureSpin.setMaximum(float(pressureMbar) / 1000)
+		self.z.hystSpin.setMaximum(float(pressureMbar) / 1000)
 
 		# Get the desired pressure
 		reply = remote.sendMessageSyncReply(MSG_GET_DESIRED_PRESSURE, 0, "",

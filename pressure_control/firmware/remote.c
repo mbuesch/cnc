@@ -312,6 +312,20 @@ static void handle_received_message(void)
 	case MSG_TURNON:
 		prepare_turn_on();
 		break;
+	case MSG_GET_MAXIMA: {
+		reply.id = MSG_MAXIMA;
+		if (rx_msg.getmaxima.island == 0) {
+			reply.maxima.pressure = XY_MAX_PRESSURE;
+			reply.maxima.hysteresis = XY_MAX_HYSTERESIS;
+			send_message(&reply);
+		} else if (rx_msg.getmaxima.island == 1) {
+			reply.maxima.pressure = Z_MAX_PRESSURE;
+			reply.maxima.hysteresis = Z_MAX_HYSTERESIS;
+			send_message(&reply);
+		} else
+			err = MSG_ERR_INVAL;
+		break;
+	}
 	case MSG_INVALID:
 		break;
 	default:

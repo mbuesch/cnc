@@ -27,7 +27,8 @@ enum remote_message_id {
 	MSG_RESTARTED,
 	MSG_SHUTDOWN,
 	MSG_TURNON,
-
+	MSG_GET_MAXIMA,
+	MSG_MAXIMA,
 
 	MSG_ID_MASK		= 0x3F,
 	MSG_FLAG_QOVERFLOW	= 0x40, /* TX queue overflow */
@@ -75,6 +76,13 @@ struct remote_message {
 			uint8_t nr;	/* Valve ID in the island */
 			uint8_t state;
 		} __attribute__((packed)) valve;
+		struct {
+			uint8_t island; /* Valve island */
+		} __attribute__((packed)) getmaxima;
+		struct {
+			uint16_t pressure;
+			uint16_t hysteresis;
+		} __attribute__((packed)) maxima;
 
 		uint8_t __padding[4];
 	} __attribute__((packed));

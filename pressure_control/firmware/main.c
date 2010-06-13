@@ -59,11 +59,6 @@ DEFINE_VALVE_1MAG(xy_control_valves,
 static DEFINE_SENSOR(z_control_sensor, 0, 245, 4400, 10000);
 static DEFINE_SENSOR(xy_control_sensor, (1<<MUX0), 245, 4400, 10000);
 
-/* Absolute maximum pressures (in mBar). */
-#define XY_MAX_PRESSURE		3500
-#define XY_MAX_HYSTERESIS	300
-#define Z_MAX_PRESSURE		1500
-#define Z_MAX_HYSTERESIS	300
 
 /* Report hysteresis (in mBar).
  * Don't report changes lower than this (With some exceptions). */

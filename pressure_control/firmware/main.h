@@ -75,4 +75,11 @@ extern struct valves xy_control_valves;
 extern struct valves z_control_valves;
 
 
+/* Absolute maximum pressures (in mBar). */
+#define XY_MAX_PRESSURE		3500
+#define XY_MAX_HYSTERESIS	300
+#define Z_MAX_PRESSURE		2500
+#define Z_MAX_HYSTERESIS	300
+
+
 #endif /* MAIN_H_ */
