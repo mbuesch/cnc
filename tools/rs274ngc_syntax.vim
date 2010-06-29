@@ -62,6 +62,7 @@ syn match rs274ngcFuncLn		/ln/
 syn match rs274ngcFuncSin		/sin/
 syn match rs274ngcFuncSqrt		/sqrt/
 syn match rs274ngcFuncTan		/tan/
+syn match rs274ngcDo			/do/
 syn match rs274ngcWhile			/while/
 syn match rs274ngcEndwhile		/endwhile/
 syn match rs274ngcSub			/sub/
@@ -125,6 +126,7 @@ hi def link rs274ngcFuncLn		Function
 hi def link rs274ngcFuncSin		Function
 hi def link rs274ngcFuncSqrt		Function
 hi def link rs274ngcFuncTan		Function
+hi def link rs274ngcDo			Repeat
 hi def link rs274ngcWhile		Repeat
 hi def link rs274ngcEndwhile		Repeat
 hi def link rs274ngcCall		Keyword
