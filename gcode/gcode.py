@@ -119,7 +119,7 @@ class G(Line):
 				   I=None, J=None, K=None,
 				   U=None, V=None, W=None,
 				   P=None, Q=None, R=None,
-				   L=None,):
+				   L=None):
 		Line.__init__(self, self.makegcode("G", number))
 		for paramStr in ("X", "Y", "Z",
 				 "A", "B", "C",
@@ -223,7 +223,7 @@ for __num in (17, 18, 19, 17.1, 18.1, 19.1,
 	      53, 54, 55, 56, 57, 58, 59, 59.1, 59.2, 59.3,
 	      61, 61.1,
 	      80,
-	      90, 91,
+	      90, 91, 90.1, 91.1,
 	      93, 94, 95):
 	exec(__genTrivial("G", __num))
 
@@ -238,7 +238,7 @@ def prologue():
 	Comment(str(datetime.datetime.today()))
 	Comment()
 	G54() << G17 << G40 << G49 << G80 \
-	      << G90 << G94 << G61 << G21
+	      << G90 << G91_1 << G94 << G61 << G21
 
 def end(fd=sys.stdout):
 	"Generate an M30 (program end) and dump the code."
