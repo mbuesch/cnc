@@ -246,6 +246,11 @@ static void check_pressure(void)
 	switch (sensor_cycle) {
 	case SENSOR_CYCLE_XY:
 		state.measured_mbar_xy = state.measured_mbar;
+		if (!cfg_xy.autoadjust_enable &&
+		    state.measured_mbar_xy >= XY_MAX_PRESSURE) {
+			/* Enforce hard max-limit in manual mode. */
+			__valves_global_switch(&xy_control_valves, VALVES_IDLE);
+		}
 		if (state.device_enabled) {
 			do_check_pressure(&xy_control_valves, &cfg_xy,
 					  state.measured_mbar_xy,
@@ -254,6 +259,11 @@ static void check_pressure(void)
 		break;
 	case SENSOR_CYCLE_Z:
 		state.measured_mbar_z = state.measured_mbar;
+		if (!cfg_z.autoadjust_enable &&
+		    state.measured_mbar_z >= Z_MAX_PRESSURE) {
+			/* Enforce hard max-limit in manual mode. */
+			__valves_global_switch(&z_control_valves, VALVES_IDLE);
+		}
 		if (state.device_enabled) {
 			do_check_pressure(&z_control_valves, &cfg_z,
 					  state.measured_mbar_z,

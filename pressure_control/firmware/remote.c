@@ -319,7 +319,7 @@ static void handle_received_message(void)
 			valve1_switch(v, rx_msg.valve.state == 0 ?
 				      VALVE_STATE_CLOSE : VALVE_STATE_OPEN);
 			valve_wait_toggle(v);
-			valve0_switch(v, VALVE_STATE_IDLE);
+			valve1_switch(v, VALVE_STATE_IDLE);
 		} else
 			err = MSG_ERR_INVAL;
 		break;
