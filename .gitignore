@@ -7,3 +7,5 @@
 *.obj
 *.bak
 *.cache.*
+*.pyc
+*.pyo
