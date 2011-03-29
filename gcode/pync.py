@@ -9,13 +9,11 @@
 # Example usage:
 
 from pync import *
-prologue()
-G54() << G0(0, 0, 2) << S(1000) << F(100) << M3
+G54() - G0(0, 0, 2) - S(1000) - F(100) - M3
 for (x, y) in ((0, 0), (10, 10), (20, 20)):
 	G0(x, y)
 	G1(Z=-20)
 	G0(Z=2)
-end()
 """
 
 import sys
