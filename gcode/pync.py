@@ -19,6 +19,7 @@ end()
 """
 
 import sys
+import atexit
 import datetime
 
 
@@ -260,3 +261,5 @@ arcCcw = G3
 
 # Generate the prologue once.
 prologue()
+# Automatically call end() on script exit
+atexit.register(end)
