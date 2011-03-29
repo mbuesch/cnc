@@ -53,6 +53,22 @@ class Line:
 		"Merge code lines."
 		return self.__merge(add)
 
+	def __add__(self, add): # a + b
+		"Merge code lines."
+		return self.__merge(add)
+
+	def __sub__(self, add): # a - b
+		"Merge code lines."
+		return self.__merge(add)
+
+	def __and__(self, add): # a & b
+		"Merge code lines."
+		return self.__merge(add)
+
+	def __or__(self, add): # a | b
+		"Merge code lines."
+		return self.__merge(add)
+
 	def __repr__(self):
 		return self.code
 
