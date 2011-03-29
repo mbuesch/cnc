@@ -22,6 +22,8 @@ import sys
 import atexit
 import datetime
 
+from math import *
+
 
 def dumpGCode(fd=sys.stdout):
 	"Print the Gcode. Defaults to stdout."
