@@ -40,7 +40,7 @@ class Line:
 
 	def __merge(self, add):
 		global lineBuffer
-		if str(type(add)) == "<type 'classobj'>":
+		if type(add) == type(Line):
 			add = add()
 		if type(add) == str:
 			self.code += " " + add
@@ -95,11 +95,17 @@ class Line:
 class Comment(Line):
 	"A human readable comment"
 	def __init__(self, text="", space=" "):
-		text = text.replace("\n", " ")
 		text = text.replace("\r", " ")
+		text = text.split("\n")
+		Line.__init__(self, Comment.__format(text[0], space))
+		if len(text) > 1: # Remaining lines, if any.
+			Comment("\n".join(text[1:]), space)
+
+	@staticmethod
+	def __format(text, space):
 		if text:
-			text = "(%s%s%s)" % (space, text, space)
-		Line.__init__(self, text)
+			return "(%s%s%s)" % (space, text, space)
+		return ""
 
 class Print(Comment):
 	"Print a message"
@@ -141,7 +147,7 @@ class G(Line):
 				 "U", "V", "W",
 				 "P", "Q", "R",
 				 "L",):
-			param = eval(paramStr)
+			param = eval(paramStr) # Fetch __init__ argument
 			if param is not None:
 				self << Line.makecoord(paramStr, param)
 
