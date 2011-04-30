@@ -96,8 +96,7 @@ class Line:
 class Comment(Line):
 	"A human readable comment"
 	def __init__(self, text="", space=" "):
-		text = text.replace("\r", " ")
-		text = text.split("\n")
+		text = str(text).replace("\r", " ").split("\n")
 		Line.__init__(self, Comment.__format(text[0], space))
 		if len(text) > 1: # Remaining lines, if any.
 			Comment("\n".join(text[1:]), space)
