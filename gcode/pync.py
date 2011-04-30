@@ -72,9 +72,7 @@ class Line:
 
 	@staticmethod
 	def makecoordnum(coord):
-		if type(coord) == float:
-			return "%.4f" % coord
-		return "%d" % coord
+		return str(coord)
 
 	@staticmethod
 	def makecoord(axis, coord):
