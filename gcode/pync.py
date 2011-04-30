@@ -26,10 +26,8 @@ from math import *
 def dumpGCode(fd=sys.stdout):
 	"Print the Gcode. Defaults to stdout."
 	global lineBuffer
-	for line in lineBuffer:
-		fd.write(str(line))
-		fd.write("\n")
-	fd.write("\n")
+	code = "\n".join(map(lambda line: str(line), lineBuffer))
+	fd.write(code + "\n")
 
 class Line:
 	"A generic Gcode line."
