@@ -77,7 +77,9 @@ class Line:
 
 	@staticmethod
 	def makecoordnum(coord):
-		return str(coord)
+		if equal(coord, int(coord)):
+			return str(int(coord))
+		return ("%f" % float(coord)).rstrip("0")
 
 	@staticmethod
 	def makecoord(axis, coord):
@@ -272,7 +274,7 @@ def end(fd=sys.stdout):
 def equal(a, b):
 	"Test a and b for equalness. Returns bool. Also works for float."
 	if type(a) == float or type(b) == float:
-		return abs(float(a) - float(b)) <= 0.00009
+		return abs(float(a) - float(b)) < 0.00001
 	return a == b
 
 # Declare aliases
