@@ -141,14 +141,14 @@ class G(Line):
 				   I=None, J=None, K=None,
 				   U=None, V=None, W=None,
 				   P=None, Q=None, R=None,
-				   L=None):
+				   L=None, D=None):
 		Line.__init__(self, self.makegcode("G", number))
 		for paramStr in ("X", "Y", "Z",
 				 "A", "B", "C",
 				 "I", "J", "K",
 				 "U", "V", "W",
 				 "P", "Q", "R",
-				 "L",):
+				 "L", "D"):
 			param = eval(paramStr) # Fetch __init__ argument
 			if param is not None:
 				self << Line.makecoord(paramStr, param)
@@ -205,6 +205,26 @@ class G64(G):
 	def __init__(self, P=None):
 		G.__init__(self, 64, P=P)
 
+class G41(G):
+	"G41 => Cutter radius compensation - left"
+	def __init__(self, D=None):
+		G.__init__(self, 41, D=D)
+
+class G42(G):
+	"G42 => Cutter radius compensation - right"
+	def __init__(self, D=None):
+		G.__init__(self, 42, D=D)
+
+class G41_1(G):
+	"G41_1 => Dynamic cutter radius compensation - left"
+	def __init__(self, D=None, L=None):
+		G.__init__(self, 41.1, D=D, L=L)
+
+class G42_1(G):
+	"G42_1 => Dynamic cutter radius compensation - right"
+	def __init__(self, D=None, L=None):
+		G.__init__(self, 42.1, D=D, L=L)
+
 class M(Line):
 	"Generic M-code"
 	def __init__(self, number):
@@ -241,7 +261,7 @@ for __num in (17, 18, 19, 17.1, 18.1, 19.1,
 	      20, 21,
 	      28, 28.1,
 	      30, 30.1,
-	      40, 41, 42, 41.1, 42.1,
+	      40,
 	      49,
 	      53, 54, 55, 56, 57, 58, 59, 59.1, 59.2, 59.3,
 	      61, 61.1,
