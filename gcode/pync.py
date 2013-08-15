@@ -23,7 +23,7 @@ import datetime
 from math import *
 
 
-class PyNC_State:
+class PyNC_State(object):
 	def __init__(self):
 		self.reset()
 
@@ -36,18 +36,19 @@ class PyNC_State:
 
 pync = PyNC_State()
 
-class Line:
+class Line(object):
 	"A generic Gcode line."
 	def __init__(self, code=""):
 		self.code = code
 		pync.lineBuffer.append(self)
 
 	def __merge(self, add):
-		if type(add) == type(Line):
-			add = add()
-		if type(add) == str:
+		if isinstance(add, str):
 			self.code += " " + add
 		else:
+			if not isinstance(add, Line):
+				add = add()
+				assert(isinstance(add, Line))
 			self.code += " " + add.code
 			pync.lineBuffer.remove(add)
 		return self
@@ -87,7 +88,7 @@ class Line:
 
 	@staticmethod
 	def makegcodenum(number):
-		if type(number) == float:
+		if isinstance(number, float):
 			return "%.1f" % number
 		return "%d" % number
 
@@ -293,7 +294,7 @@ def end(fd=sys.stdout):
 
 def equal(a, b):
 	"Test a and b for equalness. Returns bool. Also works for float."
-	if type(a) == float or type(b) == float:
+	if isinstance(a, float) or isinstance(b, float):
 		return abs(float(a) - float(b)) < 0.00001
 	return a == b
 
