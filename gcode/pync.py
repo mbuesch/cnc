@@ -1,7 +1,7 @@
 """
 # Python Gcode wrapper
 #
-# Copyright (c) 2010-2016 Michael Buesch <mb@bu3sch.de>
+# Copyright (c) 2010-2016 Michael Buesch <m@bues.ch>
 #
 # Licensed under the GNU General Public License version 2
 # or (at your option) any later version.
