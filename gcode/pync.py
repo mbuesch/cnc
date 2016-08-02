@@ -1,7 +1,7 @@
 """
 # Python Gcode wrapper
 #
-# Copyright (c) 2010-2011 Michael Buesch <mb@bu3sch.de>
+# Copyright (c) 2010-2016 Michael Buesch <mb@bu3sch.de>
 #
 # Licensed under the GNU General Public License version 2
 # or (at your option) any later version.
@@ -31,7 +31,7 @@ class PyNC_State(object):
 		self.lineBuffer = []
 
 	def dump(self, fd=sys.stdout):
-		code = "\n".join(map(lambda l: str(l), self.lineBuffer))
+		code = "\n".join(str(l) for l in self.lineBuffer)
 		fd.write(code + "\n")
 
 pync = PyNC_State()
@@ -96,6 +96,13 @@ class Line(object):
 	def makegcode(code, number):
 		return code + Line.makegcodenum(number)
 
+	@staticmethod
+	def checkargs(kwargs, allowedList):
+		for arg in kwargs.keys():
+			if arg not in allowedList:
+				raise TypeError("Got an unexpected keyword "
+					"argument '%s'" % arg)
+
 class Comment(Line):
 	"A human readable comment"
 	def __init__(self, text="", space=" "):
@@ -110,15 +117,21 @@ class Comment(Line):
 			return "(%s%s%s)" % (space, text, space)
 		return ""
 
+c = Comment
+
 class Print(Comment):
 	"Print a message"
 	def __init__(self, text):
 		Comment.__init__(self, "PRINT," + text, space="")
 
+p = Print
+
 class Debug(Comment):
 	"Print a debugging message"
 	def __init__(self, text):
 		Comment.__init__(self, "DEBUG," + text, space="")
+
+d = Debug
 
 class LogOpen(Comment):
 	"Open a log file"
@@ -135,6 +148,8 @@ class Log(Comment):
 	def __init__(self, text):
 		Comment.__init__(self, "LOG," + text, space="")
 
+l = Log
+
 class G(Line):
 	"Generic G-code"
 	def __init__(self, number, X=None, Y=None, Z=None,
@@ -142,7 +157,8 @@ class G(Line):
 				   I=None, J=None, K=None,
 				   U=None, V=None, W=None,
 				   P=None, Q=None, R=None,
-				   L=None, D=None):
+				   L=None, D=None,
+				   **kwargs):
 		Line.__init__(self, self.makegcode("G", number))
 		for paramStr in ("X", "Y", "Z",
 				 "A", "B", "C",
@@ -151,6 +167,8 @@ class G(Line):
 				 "P", "Q", "R",
 				 "L", "D"):
 			param = eval(paramStr) # Fetch __init__ argument
+			if param is None:
+				param = kwargs.get(paramStr.lower())
 			if param is not None:
 				self << Line.makecoord(paramStr, param)
 
@@ -158,73 +176,121 @@ class G0(G):
 	"G0 => rapid move"
 	def __init__(self, X=None, Y=None, Z=None,
 			   A=None, B=None, C=None,
-			   U=None, V=None, W=None):
+			   U=None, V=None, W=None,
+			   **kwargs):
+		self.checkargs(kwargs, {"x", "y", "z",
+					"a", "b", "c",
+					"u", "v", "w"})
 		G.__init__(self, 0, X=X, Y=Y, Z=Z,
 				    A=A, B=B, C=C,
-				    U=U, V=V, W=W)
+				    U=U, V=V, W=W,
+				    **kwargs)
+
+rapid = G0
 
 class G1(G):
 	"G1 => move"
 	def __init__(self, X=None, Y=None, Z=None,
 			   A=None, B=None, C=None,
-			   U=None, V=None, W=None):
+			   U=None, V=None, W=None,
+			   **kwargs):
+		self.checkargs(kwargs, {"x", "y", "z",
+					"a", "b", "c",
+					"u", "v", "w"})
 		G.__init__(self, 1, X=X, Y=Y, Z=Z,
 				    A=A, B=B, C=C,
-				    U=U, V=V, W=W)
+				    U=U, V=V, W=W,
+				    **kwargs)
+
+move = G1
 
 class G2(G):
 	"G2 => clockwise arc move"
 	def __init__(self, X=None, Y=None, Z=None,
 			   I=None, J=None, K=None,
-			   R=None):
-		G.__init__(self, 2, X=X, Y=Y, Z=Z, I=I, J=J, K=K, R=R)
+			   R=None,
+			   **kwargs):
+		self.checkargs(kwargs, {"x", "y", "z",
+					"i", "j", "k",
+					"r"})
+		G.__init__(self, 2, X=X, Y=Y, Z=Z,
+				    I=I, J=J, K=K,
+				    R=R,
+				    **kwargs)
+
+arcCw = G2
 
 class G3(G):
 	"G3 => counterclockwise arc move"
 	def __init__(self, X=None, Y=None, Z=None,
 			   I=None, J=None, K=None,
-			   R=None):
-		G.__init__(self, 3, X=X, Y=Y, Z=Z, I=I, J=J, K=K, R=R)
+			   R=None,
+			   **kwargs):
+		self.checkargs(kwargs, {"x", "y", "z",
+					"i", "j", "k",
+					"r"})
+		G.__init__(self, 3, X=X, Y=Y, Z=Z,
+				    I=I, J=J, K=K,
+				    R=R,
+				    **kwargs)
+
+arcCcw = G3
 
 class G10L1(G):
 	"G10 L1 => Set tool table"
-	def __init__(self, P=None, R=None, X=None, Z=None, Q=None):
-		G.__init__(self, 10, L=1, P=P, R=R, X=X, Z=Z, Q=Q)
+	def __init__(self, P=None, R=None, X=None,
+			   Z=None, Q=None,
+			   **kwargs):
+		self.checkargs(kwargs, {"p", "r", "x",
+					"z", "q"})
+		G.__init__(self, 10, L=1, P=P, R=R,
+				     X=X, Z=Z, Q=Q,
+				     **kwargs)
 
 class G10L2(G):
 	"G10 L2 => Set coordinate system"
 	def __init__(self, P=None, X=None, Y=None, Z=None,
 				   A=None, B=None, C=None,
-				   U=None, V=None, W=None):
+				   U=None, V=None, W=None,
+				   **kwargs):
+		self.checkargs(kwargs, {"p", "x", "y", "z",
+					"a", "b", "c",
+					"u", "v", "w"})
 		G.__init__(self, 10, L=2, P=P,
 			   X=X, Y=Y, Z=Z,
 			   A=A, B=B, C=C,
-			   U=U, V=V, W=W)
+			   U=U, V=V, W=W,
+			   **kwargs)
 
 class G64(G):
 	"G64 => Path control mode"
-	def __init__(self, P=None):
-		G.__init__(self, 64, P=P)
+	def __init__(self, P=None, **kwargs):
+		self.checkargs(kwargs, {"p"})
+		G.__init__(self, 64, P=P, **kwargs)
 
 class G41(G):
 	"G41 => Cutter radius compensation - left"
-	def __init__(self, D=None):
-		G.__init__(self, 41, D=D)
+	def __init__(self, D=None, **kwargs):
+		self.checkargs(kwargs, {"d"})
+		G.__init__(self, 41, D=D, **kwargs)
 
 class G42(G):
 	"G42 => Cutter radius compensation - right"
-	def __init__(self, D=None):
-		G.__init__(self, 42, D=D)
+	def __init__(self, D=None, **kwargs):
+		self.checkargs(kwargs, {"d"})
+		G.__init__(self, 42, D=D, **kwargs)
 
 class G41_1(G):
 	"G41_1 => Dynamic cutter radius compensation - left"
-	def __init__(self, D=None, L=None):
-		G.__init__(self, 41.1, D=D, L=L)
+	def __init__(self, D=None, L=None, **kwargs):
+		self.checkargs(kwargs, {"d", "l"})
+		G.__init__(self, 41.1, D=D, L=L, **kwargs)
 
 class G42_1(G):
 	"G42_1 => Dynamic cutter radius compensation - right"
-	def __init__(self, D=None, L=None):
-		G.__init__(self, 42.1, D=D, L=L)
+	def __init__(self, D=None, L=None, **kwargs):
+		self.checkargs(kwargs, {"d", "l"})
+		G.__init__(self, 42.1, D=D, L=L, **kwargs)
 
 class M(Line):
 	"Generic M-code"
@@ -298,11 +364,12 @@ def equal(a, b):
 		return abs(float(a) - float(b)) < 0.00001
 	return a == b
 
-# Declare aliases
-rapid = G0
-move = G1
-arcCw = G2
-arcCcw = G3
+eq = equal
+ne = lambda a, b: not equal(a, b)
+ge = lambda a, b: equal(a, b) or a > b
+le = lambda a, b: equal(a, b) or a < b
+lt = lambda a, b: a < b
+gt = lambda a, b: a > b
 
 # Generate the prologue once.
 prologue()
