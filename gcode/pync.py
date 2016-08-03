@@ -353,8 +353,8 @@ eq = equal
 ne = lambda a, b: not equal(a, b)
 ge = lambda a, b: equal(a, b) or a > b
 le = lambda a, b: equal(a, b) or a < b
-lt = lambda a, b: a < b
-gt = lambda a, b: a > b
+lt = lambda a, b: not equal and a < b
+gt = lambda a, b: not equal and a > b
 
 def __prologue():
 	"Generate the file prologue"
