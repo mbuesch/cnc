@@ -1,15 +1,11 @@
-===                                                  ===
-=== Atmel Mega8 based ODIN driver                    ===
-=== Copyright (c) 2009 Michael Buesch <mb@bu3sch.de> ===
-===                                                  ===
+===                                                    ===
+=== Atmel Mega8 based LMD18245 controller              ===
+=== Copyright (c) 2009-2017 Michael Buesch <m@bues.ch> ===
+===                                                    ===
 
 
 This is an Atmel Mega8 based replacement for the GAL22V10 driver chips on
 the ODIN motion control board.
-More information on the ODIN board can be found here:
-	http://www.deutsche-werke.de/hardwar.htm
-	http://www.deutsche-werke.de/
-The board can also be purchased on that website.
 
 The hardware documentation and the firmware of this replacement module (referred
 to as "m8driver") is licensed under the
