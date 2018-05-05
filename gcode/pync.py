@@ -384,3 +384,10 @@ def __epilogue():
 # Generate prologue and epilogue
 __prologue()
 atexit.register(__epilogue)
+
+# Clean up namespace
+del sys, six, atexit, datetime
+del __prologue, __epilogue,
+del __PyNC_State
+del _Line_Metaclass, 
+del __num, __genTrivial
