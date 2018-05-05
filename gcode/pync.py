@@ -34,6 +34,7 @@ class __PyNC_State(object):
 	def dump(self, fd=sys.stdout):
 		code = "\n".join(str(l) for l in self.lineBuffer)
 		fd.write(code + "\n")
+		fd.flush()
 
 pync = __PyNC_State()
 
@@ -374,7 +375,7 @@ def __prologue():
 	Comment()
 	G54 | G17 | G40 | G49 | G80 | G90 | G91_1 | G94 | G61 | G21
 
-def __epilogue(fd=sys.stdout):
+def __epilogue():
 	"Generate an M30 (program end) and dump the code."
 	M30()
 	Line("%")
