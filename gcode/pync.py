@@ -115,6 +115,8 @@ class Line(object):
 				raise TypeError("Got an unexpected keyword "
 					"argument '%s'" % arg)
 
+raw = Line
+
 class Comment(Line):
 	"A human readable comment"
 	def __init__(self, text="", space=" "):
