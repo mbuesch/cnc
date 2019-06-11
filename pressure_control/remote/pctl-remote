@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
-#  Copyright (C) 2008-2016 Michael Buesch <m@bues.ch>
+#  Copyright (C) 2008-2019 Michael Buesch <m@bues.ch>
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License version 3
@@ -20,12 +20,13 @@ import sys
 try:
 	from serial import *
 except ImportError:
-	print "ERROR: pyserial module not available."
-	print "On Debian Linux please do:  apt-get install python-serial"
+	print("ERROR: pyserial module not available.")
+	print("On Debian Linux please do:  apt install python3-serial")
 	sys.exit(1)
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 
 # Serial communication port configuration
@@ -76,18 +77,15 @@ CFG_FLAG_AUTOADJUST_ENABLE	= 0
 
 
 def usage():
-	print "Pressure control - remote configuration"
-	print ""
-	print "Copyright (C) 2008-2009 Michael Buesch <mb@bu3sch.de>"
-	print "Licensed under the GNU/GPL version 3"
-	print ""
-	print "Usage: pctl-remote [OPTIONS] /dev/ttyS0"
-	print ""
-	print "-h|--help            Print this help text"
-	print "-p|--noping          Don't initially ping the device"
-	print "-f|--nofetch         Don't initially fetch the device state"
-	print "-k|--noka            Don't send keep-alive pings"
-	print "-l|--log FILE        Log status information to FILE"
+	print("Pressure control - remote configuration")
+	print("")
+	print("Usage: pctl-remote [OPTIONS] /dev/ttyS0")
+	print("")
+	print("-h|--help            Print this help text")
+	print("-p|--noping          Don't initially ping the device")
+	print("-f|--nofetch         Don't initially fetch the device state")
+	print("-k|--noka            Don't send keep-alive pings")
+	print("-l|--log FILE        Log status information to FILE")
 
 def parseArgs():
 	global opt_ttyfile
@@ -135,8 +133,8 @@ class LogFile(QObject):
 			return
 		try:
 			self.fd = file(logfileName, "w+b")
-		except IOError, e:
-			print "Failed to open logfile %s: %s" % (logfileName, e.strerror)
+		except IOError as e:
+			print("Failed to open logfile %s: %s" % (logfileName, e.strerror))
 			sys.exit(1)
 		self.write("X/Y,X/Y lower threshold,X/Y upper threshold,"+\
 			   "Z,Z lower threshold,Z upper threshold,\n")
@@ -172,16 +170,16 @@ class RemoteProtocol(QObject):
 			self.devRestarted = False
 
 			self.pollTimer = QTimer(self)
-			self.connect(self.pollTimer, SIGNAL("timeout()"), self.__poll)
+			self.pollTimer.timeout.connect(self.__poll)
 			self.pollTimer.start(50)
 
 			self.keepAliveTimer = QTimer(self)
-			self.connect(self.keepAliveTimer, SIGNAL("timeout()"), self.__keepAlive)
+			self.keepAliveTimer.timeout.connect(self.__keepAlive)
 			if not opt_noka:
 				self.keepAliveTimer.start(1000)
 
 			if not opt_noping:
-				reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
+				reply = self.sendMessageSyncReply(MSG_PING, 0, b"", MSG_PONG)
 				if reply:
 					mainwnd.centralWidget().log.hostLog(
 						"PING->PONG success. Device is alife.\n")
@@ -189,8 +187,8 @@ class RemoteProtocol(QObject):
 					mainwnd.centralWidget().log.hostLog(
 						"Communication with device failed. "+\
 						"No reply to PING request.\n")
-		except (SerialException, OSError, IOError), e:
-			print e
+		except (SerialException, OSError, IOError) as e:
+			print(e)
 			sys.exit(1)
 
 	def __setResetLine(self, resetOn):
@@ -201,7 +199,7 @@ class RemoteProtocol(QObject):
 		# normal operation.
 		try:
 			self.serial.setRTS(bool(resetOn))
-		except (SerialException, OSError, IOError), e:
+		except (SerialException, OSError, IOError) as e:
 			mainwnd.statusBar().showMessage("Failed to toggle reset. %s" % e)
 
 	def rebootDevice(self):
@@ -215,7 +213,7 @@ class RemoteProtocol(QObject):
 		self.keepAliveTimer.stop()
 
 	def __keepAlive(self):
-		reply = self.sendMessageSyncReply(MSG_PING, 0, "", MSG_PONG)
+		reply = self.sendMessageSyncReply(MSG_PING, 0, b"", MSG_PONG)
 		if not reply:
 			mainwnd.centralWidget().log.hostLog(self.tr(
 				"Keep-alife: Device did not reply to ping "+\
@@ -229,7 +227,7 @@ class RemoteProtocol(QObject):
 		try:
 			if self.serial.inWaiting() >= MSG_SIZE:
 				self.parseMessage(self.__readMessage())
-		except (SerialException, OSError, IOError), e:
+		except (SerialException, OSError, IOError) as e:
 			mainwnd.statusBar().showMessage("Failed to poll message. %s" % e)
 			return
 		if self.devRestarted:
@@ -241,20 +239,20 @@ class RemoteProtocol(QObject):
 	def checksumMessage(self, msg):
 		calc_crc = self.__crc8_update_buffer(0xFF, msg[0:-1])
 		calc_crc ^= 0xFF
-		want_crc = ord(msg[-1])
+		want_crc = msg[-1]
 		if calc_crc != want_crc:
 			text = self.tr("ERROR: message CRC mismatch\n")
 			mainwnd.centralWidget().log.hostLog(text)
 			try:
 				self.serial.flushInput()
-			except (SerialException, OSError, IOError), e:
+			except (SerialException, OSError, IOError) as e:
 				pass
 			return False
 		return True
 
 	def __readMessage(self):
 		msg = self.serial.read(MSG_SIZE)
-		flags = ord(msg[0]) & ~MSG_ID_MASK
+		flags = msg[0] & ~MSG_ID_MASK
 		if flags & MSG_FLAG_QOVERFLOW:
 			mainwnd.centralWidget().log.hostLog(
 				"Warning: TX queue overflow on the device")
@@ -263,13 +261,13 @@ class RemoteProtocol(QObject):
 	def parseMessage(self, msg):
 		if not self.checksumMessage(msg):
 			return
-		id = ord(msg[0]) & MSG_ID_MASK
-		if (id == MSG_LOGMESSAGE):
-			str = self.getPayload(msg).rstrip('\0')
+		id = msg[0] & MSG_ID_MASK
+		if id == MSG_LOGMESSAGE:
+			str = self.getPayload(msg).rstrip(b'\0').decode("UTF-8", "ignore")
 			mainwnd.centralWidget().log.devLog(str)
-		if (id == MSG_CURRENT_PRESSURE):
+		if id == MSG_CURRENT_PRESSURE:
 			mainwnd.centralWidget().parseCurrentPressureMsg(msg)
-		if (id == MSG_RESTARTED):
+		if id == MSG_RESTARTED:
 			self.devRestarted = True
 
 	def getPayload(self, msg):
@@ -279,21 +277,21 @@ class RemoteProtocol(QObject):
 		"""Send a message"""
 		assert(len(payload) <= MSG_PAYLOAD_SIZE)
 		# Create the header
-		msg = "%c" % (id | flags)
+		msg = b"%c" % (id | flags)
 		# Add the payload
 		msg += payload
 		# Pad the payload up to the constant size
-		msg += '\0' * (MSG_PAYLOAD_SIZE - len(payload))
+		msg += b'\0' * (MSG_PAYLOAD_SIZE - len(payload))
 		# Calculate the CRC
 		crc = self.__crc8_update_buffer(0xFF, msg)
 		crc ^= 0xFF
 		# Add the CRC to the message
-		msg += "%c" % crc
+		msg += b"%c" % crc
 		# Send the message
 		assert(len(msg) == MSG_SIZE)
 		try:
 			self.serial.write(msg)
-		except (SerialException, OSError, IOError), e:
+		except (SerialException, OSError, IOError) as e:
 			mainwnd.statusBar().showMessage("Failed to send message. %s" % e)
 
 	def sendMessageSyncReply(self, id, flags, payload, replyId):
@@ -312,14 +310,14 @@ class RemoteProtocol(QObject):
 				msg = self.__readMessage()
 				if not self.checksumMessage(msg):
 					continue
-				msgid = ord(msg[0]) & MSG_ID_MASK
+				msgid = msg[0] & MSG_ID_MASK
 				if msgid == replyId:
 					break
 				# This is not a reply to our message.
 				self.parseMessage(msg)
-		except (SerialException, OSError, IOError), e:
+		except (SerialException, OSError, IOError) as e:
 			mainwnd.statusBar().showMessage("Failed to fetch reply. %s" % e)
-			msg = "\0" * MSG_SIZE
+			msg = b"\0" * MSG_SIZE
 		self.pollTimer.start()
 		return msg
 
@@ -329,25 +327,25 @@ class RemoteProtocol(QObject):
 		reply = self.sendMessageSyncReply(id, flags, payload, MSG_ERROR)
 		if not reply:
 			return MSG_ERR_NOREPLY
-		return ord(self.getPayload(reply)[0])
+		return self.getPayload(reply)[0]
 
 	def configFlagsFetch(self):
-		reply = self.sendMessageSyncReply(MSG_GET_CONFIG_FLAGS, 0, "",
+		reply = self.sendMessageSyncReply(MSG_GET_CONFIG_FLAGS, 0, b"",
 						  MSG_CONFIG_FLAGS)
 		if not reply:
 			return None
 		reply = remote.getPayload(reply)
-		xy = ord(reply[0])
-		z = ord(reply[1])
+		xy = reply[0]
+		z = reply[1]
 		return (xy, z)
 
 	def configFlagsSet(self, island, flags):
-		data = "%c%c" % (island, flags)
+		data = b"%c%c" % (island, flags)
 		err = self.sendMessageSyncError(MSG_SET_CONFIG_FLAGS, 0, data)
 		return err
 
 	def setValve(self, islandId, valveNr, state):
-		data = "%c%c%c" % (islandId, valveNr, (state != 0))
+		data = b"%c%c%c" % (islandId, valveNr, (state != 0))
 		i = 5 # Retry a few times
 		while i != 0:
 			err = self.sendMessageSyncError(MSG_SET_VALVE, 0, data)
@@ -358,8 +356,8 @@ class RemoteProtocol(QObject):
 
 	def __crc8_update_buffer(self, crc, buf):
 		for c in buf:
-			crc ^= ord(c)
-			for i in range(0, 8):
+			crc ^= c
+			for i in range(8):
 				if crc & 1:
 					crc = (crc >> 1) ^ 0x8C
 				else:
@@ -368,7 +366,7 @@ class RemoteProtocol(QObject):
 
 class StatusBar(QStatusBar):
 	def showMessage(self, msg):
-		print msg
+		print(msg)
 		QStatusBar.showMessage(self, msg, 3000)
 
 class LogBrowser(QTextEdit):
@@ -465,8 +463,7 @@ class ValveIslandWidget(QGroupBox):
 		h = QHBoxLayout()
 		h.addStretch()
 		self.autoCheckbox = QCheckBox(self.tr("Automatically adjust pressure"), self)
-		self.connect(self.autoCheckbox, SIGNAL("stateChanged(int)"),
-			     self.autoadjustChanged)
+		self.autoCheckbox.stateChanged.connect(self.autoadjustChanged)
 		h.addWidget(self.autoCheckbox)
 		self.layout().addLayout(h, 0, 1)
 
@@ -479,8 +476,7 @@ class ValveIslandWidget(QGroupBox):
 		self.pressureSpin.setMaximum(8)
 		self.pressureSpin.setSingleStep(0.1)
 		self.pressureSpin.setSuffix(self.tr(" Bar"))
-		self.connect(self.pressureSpin, SIGNAL("valueChanged(double)"),
-			     self.desiredPressureChanged)
+		self.pressureSpin.valueChanged.connect(self.desiredPressureChanged)
 		h.addWidget(self.pressureSpin)
 		self.layout().addLayout(h, 1, 1)
 
@@ -493,24 +489,19 @@ class ValveIslandWidget(QGroupBox):
 		self.hystSpin.setMaximum(8)
 		self.hystSpin.setSingleStep(0.05)
 		self.hystSpin.setSuffix(self.tr(" Bar"))
-		self.connect(self.hystSpin, SIGNAL("valueChanged(double)"),
-			     self.desiredHysteresisChanged)
+		self.hystSpin.valueChanged.connect(self.desiredHysteresisChanged)
 		h.addWidget(self.hystSpin)
 		self.layout().addLayout(h, 2, 1)
 
 		h = QHBoxLayout()
 		self.inButton = QPushButton(self.tr("IN-Valve"), self)
-		self.connect(self.inButton, SIGNAL("pressed()"),
-			     self.inValvePressed)
-		self.connect(self.inButton, SIGNAL("released()"),
-			     self.inValveReleased)
+		self.inButton.pressed.connect(self.inValvePressed)
+		self.inButton.released.connect(self.inValveReleased)
 		h.addWidget(self.inButton)
 		self.outButton = QPushButton(self.tr("OUT-Valve"), self)
 		h.addWidget(self.outButton)
-		self.connect(self.outButton, SIGNAL("pressed()"),
-			     self.outValvePressed)
-		self.connect(self.outButton, SIGNAL("released()"),
-			     self.outValveReleased)
+		self.outButton.pressed.connect(self.outValvePressed)
+		self.outButton.released.connect(self.outValveReleased)
 		self.layout().addLayout(h, 3, 0, 1, 2)
 
 		self.autoadjustChanged(Qt.Unchecked)
@@ -520,7 +511,7 @@ class ValveIslandWidget(QGroupBox):
 			return
 		mainwnd.centralWidget().pokeUiTimer()
 		mbar = int(value * 1000)
-		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
+		data = b"%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_DESIRED_PRESSURE, 0, data)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to change pressure. Error=%u\n" % err))
@@ -533,7 +524,7 @@ class ValveIslandWidget(QGroupBox):
 			return
 		mainwnd.centralWidget().pokeUiTimer()
 		mbar = int(value * 1000)
-		data = "%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
+		data = b"%c%c%c" % (self.islandId, (mbar & 0xFF), ((mbar >> 8) & 0xFF))
 		err = remote.sendMessageSyncError(MSG_SET_HYSTERESIS, 0, data)
 		if err != MSG_ERR_NONE:
 			self.parent().log.hostLog(self.tr("Failed to change hysteresis. Error=%u\n" % err))
@@ -548,7 +539,7 @@ class ValveIslandWidget(QGroupBox):
 			return
 		mainwnd.centralWidget().pokeUiTimer()
 		flags = remote.configFlagsFetch()
-		if flags == None:
+		if flags is None:
 			self.parent().log.hostLog(self.tr("Failed to fetch config flags\n"))
 			return
 		flags = flags[self.islandId]
@@ -593,12 +584,10 @@ class MainWidget(QWidget):
 
 		self.uiLock = QCheckBox(self.tr("User interface enabled"), self)
 		self.uiLock.setCheckState(Qt.Unchecked)
-		self.connect(self.uiLock, SIGNAL("stateChanged(int)"),
-			     self.__uiLockChanged)
+		self.uiLock.stateChanged.connect(self.__uiLockChanged)
 		self.layout().addWidget(self.uiLock)
 		self.uiLockTimer = QTimer(self)
-		self.connect(self.uiLockTimer, SIGNAL("timeout()"),
-			     self.__uiLockTimerExpired)
+		self.uiLockTimer.timeout.connect(self.__uiLockTimerExpired)
 
 		self.xy = ValveIslandWidget("X/Y joints", 0, self)
 		self.layout().addWidget(self.xy)
@@ -645,7 +634,7 @@ class MainWidget(QWidget):
 		self.initialized = True
 
 	def turnOnDevice(self):
-		error = remote.sendMessageSyncError(MSG_TURNON, 0, "")
+		error = remote.sendMessageSyncError(MSG_TURNON, 0, b"")
 		if error:
 			self.log.hostLog("Failed to turn on device\n")
 		else:
@@ -654,7 +643,7 @@ class MainWidget(QWidget):
 	def shutdown(self):
 		remote.stopKeepAliveTimer()
 		if self.initialized:
-			error = remote.sendMessageSyncError(MSG_SHUTDOWN, 0, "")
+			error = remote.sendMessageSyncError(MSG_SHUTDOWN, 0, b"")
 			if error != MSG_ERR_NONE:
 				QMessageBox.critical(self,
 					"Pressure Control",
@@ -662,65 +651,65 @@ class MainWidget(QWidget):
 
 	def fetchState(self):
 		# Get the current pressure
-		reply = remote.sendMessageSyncReply(MSG_GET_CURRENT_PRESSURE, 0, "",
+		reply = remote.sendMessageSyncReply(MSG_GET_CURRENT_PRESSURE, 0, b"",
 						    MSG_CURRENT_PRESSURE)
 		if not reply:
-			print "Failed to fetch current pressure. No reply."
+			print("Failed to fetch current pressure. No reply.")
 			return False
 		self.parseCurrentPressureMsg(reply)
 
 		# Get the X/Y maxima
-		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, "%c" % 0,
+		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, b"%c" % 0,
 						    MSG_MAXIMA)
 		if not reply:
-			print "Failed to fetch X/Y maxima. No reply."
+			print("Failed to fetch X/Y maxima. No reply.")
 			return False
 		reply = remote.getPayload(reply)
-		pressureMbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		hysteresisMbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		pressureMbar = reply[0] | (reply[1] << 8)
+		hysteresisMbar = reply[2] | (reply[3] << 8)
 		self.xy.pressureSpin.setMaximum(float(pressureMbar) / 1000)
 		self.xy.hystSpin.setMaximum(float(pressureMbar) / 1000)
 
 		# Get the Z maxima
-		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, "%c" % 1,
+		reply = remote.sendMessageSyncReply(MSG_GET_MAXIMA, 0, b"%c" % 1,
 						    MSG_MAXIMA)
 		if not reply:
-			print "Failed to fetch Z maxima. No reply."
+			print("Failed to fetch Z maxima. No reply.")
 			return False
 		reply = remote.getPayload(reply)
-		pressureMbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		hysteresisMbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		pressureMbar = reply[0] | (reply[1] << 8)
+		hysteresisMbar = reply[2] | (reply[3] << 8)
 		self.z.pressureSpin.setMaximum(float(pressureMbar) / 1000)
 		self.z.hystSpin.setMaximum(float(pressureMbar) / 1000)
 
 		# Get the desired pressure
-		reply = remote.sendMessageSyncReply(MSG_GET_DESIRED_PRESSURE, 0, "",
+		reply = remote.sendMessageSyncReply(MSG_GET_DESIRED_PRESSURE, 0, b"",
 						    MSG_DESIRED_PRESSURE)
 		if not reply:
-			print "Failed to fetch desired pressure. No reply."
+			print("Failed to fetch desired pressure. No reply.")
 			return False
 		reply = remote.getPayload(reply)
-		xy_mbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		z_mbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		xy_mbar = reply[0] | (reply[1] << 8)
+		z_mbar = reply[2] | (reply[3] << 8)
 		self.xy.pressureSpin.setValue(float(xy_mbar) / 1000)
 		self.z.pressureSpin.setValue(float(z_mbar) / 1000)
 
 		# Get the hysteresis
-		reply = remote.sendMessageSyncReply(MSG_GET_HYSTERESIS, 0, "",
+		reply = remote.sendMessageSyncReply(MSG_GET_HYSTERESIS, 0, b"",
 						    MSG_HYSTERESIS)
 		if not reply:
-			print "Failed to fetch hysteresis. No reply."
+			print("Failed to fetch hysteresis. No reply.")
 			return False
 		reply = remote.getPayload(reply)
-		xy_mbar = ord(reply[0]) | (ord(reply[1]) << 8)
-		z_mbar = ord(reply[2]) | (ord(reply[3]) << 8)
+		xy_mbar = reply[0] | (reply[1] << 8)
+		z_mbar = reply[2] | (reply[3] << 8)
 		self.xy.hystSpin.setValue(float(xy_mbar) / 1000)
 		self.z.hystSpin.setValue(float(z_mbar) / 1000)
 
 		# Get the config flags
 		flags = remote.configFlagsFetch()
-		if flags == None:
-			print "Failed to fetch config flags. No reply."
+		if flags is None:
+			print("Failed to fetch config flags. No reply.")
 			return False
 		if flags[0] & (1 << CFG_FLAG_AUTOADJUST_ENABLE):
 			self.xy.autoCheckbox.setCheckState(Qt.Checked)
@@ -731,8 +720,8 @@ class MainWidget(QWidget):
 
 	def parseCurrentPressureMsg(self, msg):
 		msg = remote.getPayload(msg)
-		xy_mbar = ord(msg[0]) | (ord(msg[1]) << 8)
-		z_mbar = ord(msg[2]) | (ord(msg[3]) << 8)
+		xy_mbar = msg[0] | (msg[1] << 8)
+		z_mbar = msg[2] | (msg[3] << 8)
 		self.xy.gauge.setValue(float(xy_mbar) / 1000)
 		self.z.gauge.setValue(float(z_mbar) / 1000)
 		logfile.logPressure(xy_mbar, self.xy.getDesiredPressure(),
@@ -768,7 +757,7 @@ class MainWindow(QMainWindow):
 	def about(self):
 		QMessageBox.information(self, self.tr("About"),
 					self.tr("Pneumatic pressure control\n"
-						"Copyright (c) 2008-2009 Michael Buesch"))
+						"Copyright (c) 2008-2019 Michael Buesch"))
 
 def main():
 	global remote
