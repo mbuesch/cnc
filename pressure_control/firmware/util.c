@@ -26,7 +26,7 @@
 #include <avr/sleep.h>
 
 
-const prog_uint8_t bit2mask_lt[] = {
+const uint8_t __flash bit2mask_lt[] = {
 	0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
 };
 
@@ -73,7 +73,7 @@ void udelay(uint16_t usecs)
 	);
 }
 
-void panic(const prog_char *msg)
+void panic(const char __flash *msg)
 {
 	print("Panic!");
 	infinite_sleep();

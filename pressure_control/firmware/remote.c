@@ -430,7 +430,7 @@ void print_sram(const char *str)
 	} while (c != '\0');
 }
 
-void print_pgm(const prog_char *str)
+void print_pgm(const char __flash *str)
 {
 	struct remote_message msg;
 	uint8_t c, i;
@@ -440,7 +440,7 @@ void print_pgm(const prog_char *str)
 		msg.id = MSG_LOGMESSAGE;
 
 		for (i = 0; i < sizeof(msg.logmessage.str); i++) {
-			c = pgm_read_byte(str);
+			c = *str;
 			if (c == '\0')
 				break;
 			str++;

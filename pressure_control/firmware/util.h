@@ -37,7 +37,7 @@
 #define stringify(x)		__stringify(x)
 
 /* Assertions */
-void panic(const prog_char *msg) __attribute__((noreturn));
+void panic(const char __flash *msg) __attribute__((noreturn));
 #define BUILD_BUG_ON(x)		((void)sizeof(char[1 - 2 * !!(x)]))
 #define BUG_ON(x)					\
 	do {						\
@@ -105,11 +105,11 @@ uint8_t crc8_block_update(uint8_t crc, const void *data, uint8_t size);
 /* Convert a bit-number to a bit-mask.
  * Only valid for bitnr<=7.
  */
-extern const prog_uint8_t bit2mask_lt[];
+extern const uint8_t __flash bit2mask_lt[];
 #undef BITMASK8
 #define BITMASK8(bitnr)					\
 	(__builtin_constant_p(bitnr) ? (1<<(bitnr)) :	\
-	 pgm_read_byte(&bit2mask_lt[(bitnr)]))
+	 bit2mask_lt[(bitnr)])
 
 
 #endif /* UTIL_H_ */
