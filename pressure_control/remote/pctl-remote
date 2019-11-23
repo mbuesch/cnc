@@ -132,16 +132,19 @@ class LogFile(QObject):
 		if not logfileName:
 			return
 		try:
-			self.fd = file(logfileName, "w+b")
+			self.fd = open(logfileName, "w+b")
 		except IOError as e:
 			print("Failed to open logfile %s: %s" % (logfileName, e.strerror))
 			sys.exit(1)
 		self.write("X/Y,X/Y lower threshold,X/Y upper threshold,"+\
 			   "Z,Z lower threshold,Z upper threshold,\n")
+		print("Logging to: %s" % logfileName)
 
 	def write(self, message):
 		if not self.fd:
 			return
+		if isinstance(message, str):
+			message = message.encode("UTF-8", "ignore")
 		self.fd.write(message)
 		self.fd.flush()
 
