@@ -95,7 +95,7 @@ MEM_DIRTABLE:		.byte 4
 
 ; Write the values from the tables to the power stage.
 .macro write_power_stage
-	andi YL, 3		; Mask the direction table pointer
+	andi YL, 3		; Mask the direction table pointer (overflow)
 	ld t0, Y		; Fetch the direction table value
 	ld t1, X		; Fetch the LMD DAC table value
 	out DAC_PORT, t1	; Commit the LMD DAC state
@@ -183,21 +183,25 @@ reset:
 ;*******************************************
 ;*** MAINLOOP                            ***
 ;*******************************************
-; TODO equalize execution times
 mainloop:
-	wdr					; Reset watchdog counter
-	sbic IN_PIN, IN_CLK_BIT			; Wait for falling edge
+	wdr			; Reset watchdog counter
+	sbic IN_PIN, IN_CLK_BIT	; Wait for falling edge
 	rjmp mainloop
 	debug_delay
  wait_rising:
-	wdr					; Reset watchdog counter
-	in sigin, IN_PIN			; Get the input signals
-	sbrs sigin, IN_CLK_BIT			; Wait for rising edge
+	wdr			; Reset watchdog counter
+	in sigin, IN_PIN	; Get the input signals
+	sbrs sigin, IN_CLK_BIT	; Wait for rising edge
 	rjmp wait_rising
 
-	; Test the direction bit to decide whether we move forward or backward
+	; From here on each possible path of execution is supposed to
+	; have the same execution time.
+
+	; Test the direction bit
+	; to decide whether to move forwards or backwards.
 	sbrs sigin, IN_DIR_BIT
 	rjmp backward
+	nop			; Compensate execution time: half rjmp
 
 
 	; *** Forward move ***
@@ -206,10 +210,14 @@ mainloop:
 	cp XL, steptab_end
 	breq fwd_end
 
+	nop			; Compensate execution time: full breq
+	nop			; Compensate execution time: inc YL
 	inc XL			; Increment microstep position
 	write_power_stage	; Write to power stage
 	rjmp mainloop
  fwd_center:
+	nop			; Compensate execution time: cp
+	nop			; Compensate execution time: half breq
 	inc YL			; Increment current direction state
 	inc XL			; Increment microstep position
 	write_power_stage	; Write to power stage
@@ -228,10 +236,14 @@ mainloop:
 	cp XL, steptab_center1
 	breq bwd_center
 
+	nop			; Compensate execution time: full breq
+	nop			; Compensate execution time: dec YL
 	dec XL			; Decrement microstep position
 	write_power_stage	; Write to power stage
 	rjmp mainloop
  bwd_start:
+	nop			; Compensate execution time: cp
+	nop			; Compensate execution time: half breq
 	dec YL			; Decrement current direction state
 	mov XL, steptab_end	; Decrement microstep position
 	write_power_stage	; Write to power stage
@@ -241,5 +253,6 @@ mainloop:
 	dec XL			; Decrement microstep position
 	write_power_stage	; Write to power stage
 	rjmp mainloop
+
 
 .include "tables.S"
