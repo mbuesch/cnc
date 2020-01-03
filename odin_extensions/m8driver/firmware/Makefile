@@ -9,12 +9,13 @@ AVRDUDE_SPEED	= 1
 PROGRAMMER	= avrisp2
 PROGPORT	= usb
 CC		= gcc
-CFLAGS		= -O2 --std=c99 -Wall
+CFLAGS		= -O2 --std=c99 -Wall -Wextra
 
 DEBUG		= 0
 
-LFUSE	= 0xE0
-HFUSE	= 0xD9
+# Fuses: Ext clock; 4ms SUT; BOD 4V; WDT always-on
+LFUSE	= 0x10
+HFUSE	= 0x99
 
 
 NAME	= m8driver
