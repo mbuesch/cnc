@@ -93,16 +93,6 @@ MEM_DIRTABLE:		.byte 4
 	rjmp reset ; interrupt vector 19
 
 
-; Write the values from the tables to the power stage.
-.macro write_power_stage
-	andi YL, 3		; Mask the direction table pointer (overflow)
-	ld t0, Y		; Fetch the direction table value
-	ld t1, X		; Fetch the LMD DAC table value
-	out DAC_PORT, t1	; Commit the LMD DAC state
-	out DIROUT_PORT, t0	; Commit LMD dir state
-.endm
-
-
 ;*******************************************
 ;*** ENTRY POINT                         ***
 ;*******************************************
@@ -173,22 +163,31 @@ reset:
 	ldi YL, low(MEM_DIRTABLE)		; Y is the table pointer
 	ldi YH, high(MEM_DIRTABLE)		; High byte is constant
 
-	; Initially set the outputs
-	write_power_stage
-
-	; Enter the main loop
-	rjmp mainloop
+	; Initially set the outputs and enter the main loop.
+	rjmp write_power_stage
 
 
 ;*******************************************
-;*** MAINLOOP                            ***
+;*** MAIN LOOP                           ***
 ;*******************************************
-mainloop:
+
+write_power_stage:
+	; Write the values from the tables to the power stage.
+	andi YL, 3		; Mask the direction table pointer (overflow)
+	ld t0, Y		; Fetch the direction table value
+	ld t1, X		; Fetch the LMD DAC table value
+	out DAC_PORT, t1	; Commit the LMD DAC state
+	out DIROUT_PORT, t0	; Commit LMD dir state
+
+wait_falling:
+	; Wait for input clock falling edge.
 	wdr			; Reset watchdog counter
 	sbic IN_PIN, IN_CLK_BIT	; Wait for falling edge
-	rjmp mainloop
+	rjmp wait_falling
 	debug_delay
- wait_rising:
+
+wait_rising:
+	; Wait for input clock rising edge.
 	wdr			; Reset watchdog counter
 	in sigin, IN_PIN	; Get the input signals
 	sbrs sigin, IN_CLK_BIT	; Wait for rising edge
@@ -213,23 +212,20 @@ mainloop:
 	nop			; Compensate execution time: full breq
 	nop			; Compensate execution time: inc YL
 	inc XL			; Increment microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
- fwd_center:
+	rjmp write_power_stage	; Write to power stage
+fwd_center:
 	nop			; Compensate execution time: cp
 	nop			; Compensate execution time: half breq
 	inc YL			; Increment current direction state
 	inc XL			; Increment microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
- fwd_end:
+	rjmp write_power_stage	; Write to power stage
+fwd_end:
 	inc YL			; Increment current direction state
 	mov XL, steptab_start	; Increment microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
+	rjmp write_power_stage	; Write to power stage
 
 
- backward:
+backward:
 	; *** Backward move ***
 	cp XL, steptab_start
 	breq bwd_start
@@ -239,20 +235,17 @@ mainloop:
 	nop			; Compensate execution time: full breq
 	nop			; Compensate execution time: dec YL
 	dec XL			; Decrement microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
- bwd_start:
+	rjmp write_power_stage	; Write to power stage
+bwd_start:
 	nop			; Compensate execution time: cp
 	nop			; Compensate execution time: half breq
 	dec YL			; Decrement current direction state
 	mov XL, steptab_end	; Decrement microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
- bwd_center:
+	rjmp write_power_stage	; Write to power stage
+bwd_center:
 	dec YL			; Decrement current direction state
 	dec XL			; Decrement microstep position
-	write_power_stage	; Write to power stage
-	rjmp mainloop
+	rjmp write_power_stage	; Write to power stage
 
 
 .include "tables.S"
