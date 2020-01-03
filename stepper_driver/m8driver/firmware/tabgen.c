@@ -61,18 +61,13 @@ static int gen_lmd_tab(unsigned int nr_steps)
 	for (count = 0; count < nr_steps * 2; count++) {
 		pos = (M_PI * (double)count) / ((double)nr_steps * 2.0);
 
-		s = sin(pos);
-		s = s * 0xF;
+		s = fabs(sin(pos)) * (double)0xF;
 		lmd1 = (unsigned int)round(s) & 0xFu;
 
-		s = cos(pos);
-		if (s < 0.0)
-			s = -s;
-		s = s * 0xF;
+		s = fabs(cos(pos)) * (double)0xF;
 		lmd2 = (unsigned int)round(s) & 0xFu;
-		lmd2 <<= 4;
 
-		buf[count] = lmd1 | lmd2;
+		buf[count] = lmd1 | (lmd2 << 4);
 	}
 
 	/* Print the lookup table. */
