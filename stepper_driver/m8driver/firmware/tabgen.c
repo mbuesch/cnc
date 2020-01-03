@@ -1,5 +1,5 @@
 /*
- *   Atmel Mega8 based ODIN chipset
+ *   Atmel Mega8 based LMD18245 controller
  *   Lookup table generator
  *
  *   Copyright (c) 2009-2020 Michael Buesch <m@bues.ch>
