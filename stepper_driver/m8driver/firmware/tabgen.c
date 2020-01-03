@@ -2,7 +2,7 @@
  *   Atmel Mega8 based ODIN chipset
  *   Lookup table generator
  *
- *   Copyright (c) 2009 Michael Buesch <mb@bu3sch.de>
+ *   Copyright (c) 2009-2020 Michael Buesch <m@bues.ch>
  *
  *   This program is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU General Public License
@@ -59,17 +59,17 @@ static int gen_lmd_tab(unsigned int nr_steps)
 	/* Generate the lookup table. */
 	/* sin() takes radians as arg. pi rad == 180deg */
 	for (count = 0; count < nr_steps * 2; count++) {
-		pos = M_PI / (nr_steps * 2) * count;
+		pos = (M_PI * (double)count) / ((double)nr_steps * 2.0);
 
 		s = sin(pos);
 		s = s * 0xF;
-		lmd1 = (unsigned int)round(s) & 0xF;
+		lmd1 = (unsigned int)round(s) & 0xFu;
 
 		s = cos(pos);
-		if (s < 0)
+		if (s < 0.0)
 			s = -s;
 		s = s * 0xF;
-		lmd2 = (unsigned int)round(s) & 0xF;
+		lmd2 = (unsigned int)round(s) & 0xFu;
 		lmd2 <<= 4;
 
 		buf[count] = lmd1 | lmd2;
