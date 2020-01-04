@@ -5,7 +5,8 @@ AVRDUDE_SPEED	?= 1
 PROGRAMMER	?= avrisp2
 PROGPORT	?= usb
 
-LFUSE	= 0x04
+# Fuses: Int. RC Osc 8 MHz; 64ms SUT; BOD 4V; WDT always-on
+LFUSE	= 0x24
 HFUSE	= 0x99
 
 
@@ -14,8 +15,8 @@ HEX	= $(NAME).S.hex
 
 all: $(HEX)
 
-$(HEX): estop.S m8def.inc
-	$(ASM) estop.S
+$(HEX): $(NAME).S m8def.inc
+	$(ASM) $(NAME).S
 	-srec_cat $(HEX) -Intel -Output $(NAME).S.bin -Binary
 	@echo
 	@echo "Successfully built the firmware"
