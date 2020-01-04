@@ -32,6 +32,8 @@
 .equ IN_PIN		= PINC
 .equ IN_CLK_BIT		= 0
 .equ IN_DIR_BIT		= 1
+.equ DEBUG_PORT		= PORTC
+.equ DEBUG_BIT		= 5
 
 
 .dseg ; data section
@@ -116,19 +118,17 @@ reset:
 
 	; Setup the port configuration
 	ldi t0, 0xFF	; B=out
+	ldi t1, 0x00	; B=low
 	out DDRB, t0
-	ldi t0, 0x00
-	out PORTB, t0
-
-	ldi t0, 0x00	; C=in
+	out PORTB, t1
+	ldi t0, 0x20	; C5=out, others=in
+	ldi t1, 0xDF	; C5=low, others=pullups
 	out DDRC, t0
-	ldi t0, 0xFF	; C=pullups
-	out PORTC, t0
-
+	out PORTC, t1
 	ldi t0, 0xFF	; D=out
+	ldi t1, 0x00	; D=low
 	out DDRD, t0
-	ldi t0, 0x00
-	out PORTD, t0
+	out PORTD, t1
 
 	; Copy the step table to RAM
 	ldi t0, (NR_STEPS * 2)
@@ -173,56 +173,59 @@ reset:
 
 write_power_stage:
 	; Write the values from the tables to the power stage.
-	andi YL, 3		; Mask the direction table pointer (overflow)
-	ld t0, Y		; Fetch the direction table value
-	ld t1, X		; Fetch the LMD DAC table value
-	out DAC_PORT, t1	; Commit the LMD DAC state
-	out DIROUT_PORT, t0	; Commit LMD dir state
+	andi YL, 3			; Mask the direction table pointer (overflow)
+	ld t0, Y			; Fetch the direction table value
+	ld t1, X			; Fetch the LMD DAC table value
+	out DAC_PORT, t1		; Commit the LMD DAC state
+	out DIROUT_PORT, t0		; Commit LMD dir state
+;	cbi DEBUG_PORT, DEBUG_BIT
 
 wait_falling:
 	; Wait for input clock falling edge.
-	wdr			; Reset watchdog counter
-	sbic IN_PIN, IN_CLK_BIT	; Wait for falling edge
+	wdr				; Reset watchdog counter
+	sbic IN_PIN, IN_CLK_BIT		; Wait for falling edge
 	rjmp wait_falling
 	debug_delay
 
 wait_rising:
 	; Wait for input clock rising edge.
-	wdr			; Reset watchdog counter
-	in sigin, IN_PIN	; Get the input signals
-	sbrs sigin, IN_CLK_BIT	; Wait for rising edge
+	wdr				; Reset watchdog counter
+	in sigin, IN_PIN		; Get the input signals
+	sbrs sigin, IN_CLK_BIT		; Wait for rising edge
 	rjmp wait_rising
 
 	; From here on each possible path of execution is supposed to
 	; have the same execution time.
 
+;	sbi DEBUG_PORT, DEBUG_BIT
+
 	; Test the direction bit
 	; to decide whether to move forwards or backwards.
 	sbrs sigin, IN_DIR_BIT
 	rjmp backward
-	nop			; Compensate execution time: half rjmp
+	nop				; Compensate execution time: half rjmp
 
 
 	; *** Forward move ***
 	cp XL, steptab_center0
-	breq fwd_center
+	breq fwd_center0
 	cp XL, steptab_end
 	breq fwd_end
 
-	nop			; Compensate execution time: full breq
-	nop			; Compensate execution time: inc YL
-	inc XL			; Increment microstep position
-	rjmp write_power_stage	; Write to power stage
-fwd_center:
-	nop			; Compensate execution time: cp
-	nop			; Compensate execution time: half breq
-	inc YL			; Increment current direction state
-	inc XL			; Increment microstep position
-	rjmp write_power_stage	; Write to power stage
+	nop				; Compensate execution time: full breq
+	nop				; Compensate execution time: inc YL
+	inc XL				; Increment microstep position
+	rjmp write_power_stage		; Write to power stage
+fwd_center0:
+	nop				; Compensate execution time: cp
+	nop				; Compensate execution time: half breq
+	inc YL				; Increment current direction state
+	inc XL				; Increment microstep position
+	rjmp write_power_stage		; Write to power stage
 fwd_end:
-	inc YL			; Increment current direction state
-	mov XL, steptab_start	; Increment microstep position
-	rjmp write_power_stage	; Write to power stage
+	inc YL				; Increment current direction state
+	mov XL, steptab_start		; Increment microstep position
+	rjmp write_power_stage		; Write to power stage
 
 
 backward:
@@ -230,22 +233,22 @@ backward:
 	cp XL, steptab_start
 	breq bwd_start
 	cp XL, steptab_center1
-	breq bwd_center
+	breq bwd_center1
 
-	nop			; Compensate execution time: full breq
-	nop			; Compensate execution time: dec YL
-	dec XL			; Decrement microstep position
-	rjmp write_power_stage	; Write to power stage
+	nop				; Compensate execution time: full breq
+	nop				; Compensate execution time: dec YL
+	dec XL				; Decrement microstep position
+	rjmp write_power_stage		; Write to power stage
 bwd_start:
-	nop			; Compensate execution time: cp
-	nop			; Compensate execution time: half breq
-	dec YL			; Decrement current direction state
-	mov XL, steptab_end	; Decrement microstep position
-	rjmp write_power_stage	; Write to power stage
-bwd_center:
-	dec YL			; Decrement current direction state
-	dec XL			; Decrement microstep position
-	rjmp write_power_stage	; Write to power stage
+	nop				; Compensate execution time: cp
+	nop				; Compensate execution time: half breq
+	dec YL				; Decrement current direction state
+	mov XL, steptab_end		; Decrement microstep position
+	rjmp write_power_stage		; Write to power stage
+bwd_center1:
+	dec YL				; Decrement current direction state
+	dec XL				; Decrement microstep position
+	rjmp write_power_stage		; Write to power stage
 
 
 .include "tables.S"
