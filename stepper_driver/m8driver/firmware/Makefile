@@ -1,25 +1,25 @@
 # The number of microsteps
-STEPS		= 25
+STEPS		:= 25
 
-ASM		= avra
-ASMFLAGS	= -I /usr/share/avra
-AVRDUDE		= avrdude
-AVRDUDE_ARCH	= m8
-AVRDUDE_SPEED	= 1
-PROGRAMMER	= avrisp2
-PROGPORT	= usb
-CC		= gcc
-CFLAGS		= -O2 --std=c99 -Wall -Wextra
+ASM		:= avra
+ASMFLAGS	:= -I /usr/share/avra
+AVRDUDE		:= avrdude
+AVRDUDE_ARCH	:= m8
+AVRDUDE_SPEED	:= 1
+PROGRAMMER	:= avrisp2
+PROGPORT	:= usb
+CC		:= gcc
+CFLAGS		:= -O2 --std=c99 -Wall -Wextra
 
-DEBUG		= 0
+DEBUG		:= 0
 
 # Fuses: Ext clock; 4ms SUT; BOD 4V; WDT always-on
-LFUSE	= 0x10
-HFUSE	= 0x99
+LFUSE		:= 0x10
+HFUSE		:= 0x99
 
 
-NAME	= m8driver
-HEX	= $(NAME).S.hex
+NAME		:= m8driver
+HEX		:= $(NAME).S.hex
 
 ifneq ($(DEBUG),0)
 ASMFLAGS += --define DEBUG
