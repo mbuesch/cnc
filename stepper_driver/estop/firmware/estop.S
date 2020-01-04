@@ -1,7 +1,7 @@
 ;
-;   ODIN Motion Control Emergency Stop Extension
+;   CNC stepper driver Emergency Stop
 ;
-;   Copyright (c) 2009 Michael Buesch <mb@bu3sch.de>
+;   Copyright (c) 2009-2020 Michael Buesch <m@bues.ch>
 ;
 ;   This program is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU General Public License
@@ -13,7 +13,6 @@
 ;   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;   GNU General Public License for more details.
 
-.listmac
 .include "m8def.inc"
 
 ; CPU_HZ is 8MHz
@@ -73,21 +72,53 @@
 .cseg
 .org 0x000
 	rjmp reset
+.org INT0addr
+	rjmp interrupt_invalid
 .org INT1addr
 	rjmp interrupt_int1
 .org OC2addr
 	rjmp interrupt_timer2_oc
+.org OVF2addr
+	rjmp interrupt_invalid
+.org ICP1addr
+	rjmp interrupt_invalid
+.org OC1Aaddr
+	rjmp interrupt_invalid
+.org OC1Baddr
+	rjmp interrupt_invalid
+.org OVF1addr
+	rjmp interrupt_invalid
+.org OVF0addr
+	rjmp interrupt_invalid
+.org SPIaddr
+	rjmp interrupt_invalid
+.org URXCaddr
+	rjmp interrupt_invalid
+.org UDREaddr
+	rjmp interrupt_invalid
+.org UTXCaddr
+	rjmp interrupt_invalid
+.org ADCCaddr
+	rjmp interrupt_invalid
+.org ERDYaddr
+	rjmp interrupt_invalid
+.org ACIaddr
+	rjmp interrupt_invalid
+.org TWIaddr
+	rjmp interrupt_invalid
+.org SPMRaddr
+	rjmp interrupt_invalid
 
-.org 0x026
 
 ;*******************************************
 ;*** INT1 interrupt handler              ***
 ;*******************************************
 interrupt_int1:
-	; No need to save SREG. Nobody changes flags.
+	in sregsave, SREG
 	out TCNT1H, zero		; Reset the charge pump monitor timer
 	out TCNT1L, zero
 	out TIFR, tov1_clear_mask	; Clear the overflow flag
+	out SREG, sregsave
 	reti
 
 ;*******************************************
@@ -99,6 +130,14 @@ interrupt_timer2_oc:
 	dec sigtimer
 	out SREG, sregsave
 	reti
+
+;*******************************************
+;*** Invalid interrupt handler           ***
+;*******************************************
+interrupt_invalid:
+	; Loop forever to let the watchdog timer expire.
+	cli
+	rjmp interrupt_invalid
 
 ;*********************************************
 ;*** Check for charge pump monitor timeout ***
