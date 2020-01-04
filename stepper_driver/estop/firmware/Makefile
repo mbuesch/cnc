@@ -1,22 +1,23 @@
-ASM		?= avra
-AVRDUDE		?= avrdude
-AVRDUDE_ARCH	?= m8
-AVRDUDE_SPEED	?= 1
-PROGRAMMER	?= avrisp2
-PROGPORT	?= usb
+ASM		:= avra
+ASMFLAGS	:= -I /usr/share/avra
+AVRDUDE		:= avrdude
+AVRDUDE_ARCH	:= m8
+AVRDUDE_SPEED	:= 1
+PROGRAMMER	:= avrisp2
+PROGPORT	:= usb
 
 # Fuses: Int. RC Osc 8 MHz; 64ms SUT; BOD 4V; WDT always-on
-LFUSE	= 0x24
-HFUSE	= 0x99
+LFUSE		:= 0x24
+HFUSE		:= 0x99
 
 
-NAME	= estop
-HEX	= $(NAME).S.hex
+NAME		:= estop
+HEX		:= $(NAME).S.hex
 
 all: $(HEX)
 
-$(HEX): $(NAME).S m8def.inc
-	$(ASM) $(NAME).S
+$(HEX): $(NAME).S
+	$(ASM) $(ASMFLAGS) --listfile $(NAME).S.lst --listmac $(NAME).S
 	-srec_cat $(HEX) -Intel -Output $(NAME).S.bin -Binary
 	@echo
 	@echo "Successfully built the firmware"
@@ -41,4 +42,4 @@ writefuse:
 	 -U hfuse:w:$(HFUSE):m
 
 clean:
-	-rm -f *~ *.cof *.hex *.obj *.bin *.bak *.cache.* *.o
+	-rm -f *~ *.cof *.hex *.obj *.bin *.lst *.bak *.o
