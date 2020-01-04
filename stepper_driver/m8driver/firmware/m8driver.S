@@ -34,11 +34,10 @@
 .equ DEBUG_BIT		= 5
 
 
-.dseg ; data section
-
 ; Allocate enough space for 60 microsteps.
 ; Align to 0x100 so that the high byte of the pointer will
 ; never change.
+.dseg ; data section
 .org 0x100
 MEM_STEPTABLE:		.byte (60 * 2)
 
@@ -46,6 +45,7 @@ MEM_STEPTABLE:		.byte (60 * 2)
 ; Allocate 4 bytes for the direction state lookup table.
 ; Align to 0x200 so that the high byte of the pointer will
 ; never change.
+.dseg ; data section
 .org 0x200
 MEM_DIRTABLE:		.byte 4
 
@@ -96,6 +96,7 @@ MEM_DIRTABLE:		.byte 4
 ;*******************************************
 ;*** ENTRY POINT                         ***
 ;*******************************************
+.cseg ; code section
 reset:
 	cli
 

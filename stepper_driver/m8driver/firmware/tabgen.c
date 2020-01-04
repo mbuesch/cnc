@@ -111,6 +111,7 @@ int main(int argc, char **argv)
 		return 1;
 
 	printf("; For reference store the build parameters in the binary image\n");
+	printf(".cseg\n");
 	printf(".db 0,0,0,0\n");
 	printf(".db \"NR_STEPS=%lu\"%s\n", nr_steps, ((nr_steps > 9) ? ",0" : ""));
 	printf(".db 0,0,0,0\n");
