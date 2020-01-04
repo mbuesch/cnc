@@ -1,3 +1,4 @@
+*~
 *.o
 *.s
 *.swp
@@ -6,6 +7,5 @@
 *.cof
 *.obj
 *.bak
-*.cache.*
 *.pyc
 *.pyo
