@@ -5,15 +5,16 @@ These timings are based on a crystal frequency of 16MHz.
 
 Name        | Value in nanoseconds  | Description
 ===============================================================================
-steplen     | < 300                 | Minimum length of a step "high" pulse.
+steplow     | 250                   | Minimum length of a step "low" pulse.
             |                       |
-steptime    | < 2000                | Time required to process one step.
-            |                       | So steps must be separated by this time,
-            |                       | at least.
+stephigh    | 250                   | Minimum length of a step "high" pulse.
             |                       |
-dirsetup    | < 100                 | Minimum spacing between a direction
+stepcalc    | 2000                  | Time required to process one step.
+            |                       | Time starts after detection of "high" pulse.
+            |                       |
+dirsetup    | 0                     | Minimum spacing between a direction
             |                       | change and a step pulse.
             |                       |
-dirhold     | < 0                   | Minimum time between end of step pulse
-            |                       | and a direction change.
+dirhold     | 500                   | Minimum time between a step "high" edge
+            |                       | and a subsequent direction change (for the next step).
 

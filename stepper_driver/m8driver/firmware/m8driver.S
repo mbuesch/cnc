@@ -17,7 +17,6 @@
 .include "m8def.inc"
 
 
-.def sigin		= r15	; Input signal
 .def t0			= r16	; Temp reg 0
 .def t1			= r17	; Temp reg 1
 .def steptab_start	= r22	; Step table start marker	(constant value)
@@ -190,8 +189,7 @@ wait_falling:
 wait_rising:
 	; Wait for input clock rising edge.
 	wdr				; Reset watchdog counter
-	in sigin, IN_PIN		; Get the input signals
-	sbrs sigin, IN_CLK_BIT		; Wait for rising edge
+	sbis IN_PIN, IN_CLK_BIT		; Wait for rising edge
 	rjmp wait_rising
 
 	; From here on each possible path of execution is supposed to
@@ -201,7 +199,7 @@ wait_rising:
 
 	; Test the direction bit
 	; to decide whether to move forwards or backwards.
-	sbrs sigin, IN_DIR_BIT
+	sbis IN_PIN, IN_DIR_BIT
 	rjmp backward
 	nop				; Compensate execution time: half rjmp
 
