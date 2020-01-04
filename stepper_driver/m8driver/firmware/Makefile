@@ -2,7 +2,7 @@
 STEPS		= 25
 
 ASM		= avra
-ASMFLAGS	=
+ASMFLAGS	= -I /usr/share/avra
 AVRDUDE		= avrdude
 AVRDUDE_ARCH	= m8
 AVRDUDE_SPEED	= 1
@@ -33,8 +33,8 @@ tabgen: tabgen.o
 tables.S: tabgen
 	./tabgen $(STEPS) > tables.S
 
-$(HEX): m8driver.S m8def.inc tables.S
-	$(ASM) $(ASMFLAGS) m8driver.S
+$(HEX): m8driver.S tables.S
+	$(ASM) $(ASMFLAGS) --listfile $(NAME).S.lst --listmac $(NAME).S
 	-srec_cat $(HEX) -Intel -Output $(NAME).S.bin -Binary
 	@echo
 	@echo "Successfully built the firmware"
@@ -67,4 +67,4 @@ writefuse:
 	 -U hfuse:w:$(HFUSE):m
 
 clean:
-	-rm -f *~ *.cof *.hex *.obj *.bin *.bak *.cache.* *.o *.dump tabgen tables.S
+	-rm -f *~ *.cof *.hex *.obj *.bin *.lst *.bak *.cache.* *.o *.dump tabgen tables.S

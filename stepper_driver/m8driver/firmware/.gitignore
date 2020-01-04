@@ -1,2 +1,5 @@
 tabgen
 tables.S
+*.hex
+*.lst
+*.bin
