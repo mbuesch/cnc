@@ -26,6 +26,14 @@ install: all
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:w:$(HEX)
 
+dumphex:
+	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
+	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:r:$(HEX).dump:i
+
+dumpbin:
+	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
+	 -c $(PROGRAMMER) -P $(PROGPORT) -U flash:r:$(NAME).S.bin.dump:r
+
 avrdude:
 	$(AVRDUDE) -B $(AVRDUDE_SPEED) -p $(AVRDUDE_ARCH) \
 	 -c $(PROGRAMMER) -P $(PROGPORT) -t
