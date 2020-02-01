@@ -1,5 +1,5 @@
 # The number of microsteps
-STEPS		:= 25
+STEPS		:= 18
 
 ASM		:= avra
 ASMFLAGS	:= -I /usr/share/avra
