@@ -67,4 +67,4 @@ writefuse:
 	 -U hfuse:w:$(HFUSE):m
 
 clean:
-	-rm -f *~ *.cof *.hex *.obj *.bin *.lst *.bak *.cache.* *.o *.dump tabgen tables.S
+	-rm -f *~ *.cof *.hex *.obj *.bin *.lst *.bak *.o tabgen tables.S
