@@ -16,6 +16,7 @@
 .include "m8def.inc"
 
 
+.def zero		= r0	; Always zero
 .def t0			= r16	; Temp reg 0
 .def t1			= r17	; Temp reg 1
 .def steptab_start	= r22	; Step table start marker	(constant value)
@@ -99,14 +100,16 @@ MEM_DIRTABLE:		.byte 4
 .cseg ; code section
 reset:
 	cli
+	clr zero
 
 	; Configure watchdog timeout = 16 ms
 	wdr
+	out MCUSR, zero
 	in t0, WDTCR
 	ori t0, (1 << WDCE) | (1 << WDE)
+	ldi t1, (1 << WDE) | (0 << WDP2) | (0 << WDP1) | (0 << WDP0)
 	out WDTCR, t0
-	ldi t0, (1 << WDE) | (0 << WDP2) | (0 << WDP1) | (0 << WDP0)
-	out WDTCR, t0
+	out WDTCR, t1
 	wdr
 
 	; Init the stackpointer
