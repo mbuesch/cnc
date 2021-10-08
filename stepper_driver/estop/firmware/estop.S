@@ -1,7 +1,7 @@
 ;
 ;   CNC stepper driver Emergency Stop
 ;
-;   Copyright (c) 2009-2020 Michael Buesch <m@bues.ch>
+;   Copyright (c) 2009-2021 Michael Buesch <m@bues.ch>
 ;
 ;   This program is free software; you can redistribute it and/or
 ;   modify it under the terms of the GNU General Public License
@@ -23,10 +23,12 @@
 .def t1				= r17	; Temp reg 1
 .def t2				= r18	; Temp reg 2
 .def t3				= r19	; Temp reg 3
-.def mcusr_copy			= r22	; Saved MCUSR
-.def econditions		= r23	; Scratch register to store E-STOP conditions
-.def sigtimer			= r24	; Input signal conditioning timer counter
-.def tov1_clear_mask		= r25	; Holds mask to clear TOV1
+.def mcusr_copy			= r20	; Saved MCUSR
+.def econditions		= r21	; Scratch register to store E-STOP conditions
+.def sigtimer			= r22	; Input signal conditioning timer counter
+.def tov1_clear_mask		= r23	; Holds mask to clear TOV1
+.def chgpump_timeout_thres_lo	= r24	; CHGPUMP_TIMEOUT_THRES (low 8 bits)
+.def chgpump_timeout_thres_hi	= r25	; CHGPUMP_TIMEOUT_THRES (high 8 bits)
 
 
 .equ CHGPUMP_IN_PIN		= PIND	; Charge pump signal from EMC
@@ -49,6 +51,18 @@
 .equ ECOND_FROMEMC		= 0
 .equ ECOND_FROMBUTTON		= 1
 .equ ECOND_FROMCHGPUMP		= 2
+
+
+; Timeout threshold for charge pump input signal.
+; The timer runs with CPU_HZ/1024 Hz.
+; The charge pump interrupt resets the timer to 0 on any signal change.
+; If the timer reaches CHGPUMP_TIMEOUT_THRES, then a timeout is asserted.
+.equ CHGPUMP_TIMEOUT_THRES	= 500 	; 64 ms
+
+
+; Conditioning timer in estop and run modes.
+.equ ESTOP_SIGTIMER		= 255	; time = ESTOP_SIGTIMER * 200 us
+.equ RUN_SIGTIMER		= 5	; time = RUN_SIGTIMER * 200 us
 
 
 ; Millisecond delay
@@ -152,10 +166,9 @@ check_charge_pump_timeout:
 	in t2, TIFR
 	sbrc t2, TOV1					; Charge pump timer overflow
 	rjmp __chg_pump_timeout
-	ldi t2, 10					; Timeout, if bigger
-	cp t0, t2					; Charge pump monitor timeout?
-	cpc t1, zero
-	brsh __chg_pump_timeout
+	cp t0, chgpump_timeout_thres_lo			; Charge pump monitor timeout?
+	cpc t1, chgpump_timeout_thres_hi
+	brsh __chg_pump_timeout				; Timeout, if bigger or equal
 	ldi t0, 0
 	ret
  __chg_pump_timeout:
@@ -220,6 +233,8 @@ reset:
 	out TCCR1A, t0
 	ldi t0, ((1<<CS10) | (1<<CS12))		; freq = CPU_HZ / 1024
 	out TCCR1B, t0
+	ldi chgpump_timeout_thres_lo, low(CHGPUMP_TIMEOUT_THRES)
+	ldi chgpump_timeout_thres_hi, high(CHGPUMP_TIMEOUT_THRES)
 	; Init the timer1 interrupt
 	in t0, MCUCR
 	sbr t0, (1<<ISC10)			; Logical change triggers IRQ
@@ -258,7 +273,6 @@ reset:
 ;*** ESTOP - loop                        ***
 ;*** Emergency Stop is asserted          ***
 ;*******************************************
-.equ ESTOP_SIGTIMER = 255	; time = ESTOP_SIGTIMER * 200uS
 enter_estop_loop:
 	cli
 	cbi MSPINDLERUN_OUT_PORT, MSPINDLERUN_OUT_BIT	; Stop the master spindle
@@ -292,7 +306,6 @@ estop_loop:
 ;*** RUN - loop                          ***
 ;*** Emergency Stop is not asserted      ***
 ;*******************************************
-.equ RUN_SIGTIMER = 5	; time = RUN_SIGTIMER * 200uS
 enter_run_loop:
 	cbi JOINTBRAKE_PORT, JOINTBRAKE_BIT		; Deactivate the joints brake
 	cbi ESTOP_OUT_PORT, ESTOP_OUT_BIT		; De-assert the E-STOP output signal
